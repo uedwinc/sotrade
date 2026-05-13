@@ -134,6 +134,7 @@ export interface ExecutionPlanRequest {
   stopLossUsd: number;
   takeProfitUsd: number[];
   positionSizeBtc: number;
+  copilotHorizon?: CopilotHorizon;
   copilotGeneratedAt?: string;
   copilotRunId?: string;
 }

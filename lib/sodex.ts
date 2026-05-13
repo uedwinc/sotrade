@@ -1,8 +1,13 @@
 import { ethers } from "ethers";
 
+import {
+  getCopilotHorizonOption,
+  isCopilotHorizon
+} from "@/lib/copilot-horizons";
 import { getTradingEnvironment } from "@/lib/config";
 import { saveExecutionRun } from "@/lib/execution-persistence";
 import type {
+  CopilotHorizon,
   ExecutionErrorResponse,
   ExecutionPlanRequest,
   ExecutionPreviewOrder,
@@ -58,6 +63,7 @@ interface ParsedExecutionRequest {
   stopLossUsd: number;
   takeProfitUsd: number[];
   positionSizeBtc: number;
+  copilotHorizon: CopilotHorizon;
   copilotGeneratedAt?: string;
   copilotRunId?: string;
 }
@@ -407,6 +413,7 @@ function parseExecutionRequest(body: unknown): ParsedExecutionRequest {
   const entryPriceUsd = asNumber(record.entryPriceUsd);
   const stopLossUsd = asNumber(record.stopLossUsd);
   const positionSizeBtc = asNumber(record.positionSizeBtc);
+  const copilotHorizon = asString(record.copilotHorizon);
   const takeProfitUsd = Array.isArray(record.takeProfitUsd)
     ? record.takeProfitUsd
         .map((value) => asNumber(value))
@@ -440,6 +447,15 @@ function parseExecutionRequest(body: unknown): ParsedExecutionRequest {
     );
   }
 
+  if (copilotHorizon && !isCopilotHorizon(copilotHorizon)) {
+    throw new ExecutionServiceError(
+      "INVALID_HORIZON",
+      400,
+      false,
+      "Execution received an unsupported Copilot horizon."
+    );
+  }
+
   return {
     asset: "BTC",
     thesisBias,
@@ -447,6 +463,9 @@ function parseExecutionRequest(body: unknown): ParsedExecutionRequest {
     stopLossUsd,
     takeProfitUsd,
     positionSizeBtc,
+    copilotHorizon: copilotHorizon && isCopilotHorizon(copilotHorizon)
+      ? copilotHorizon
+      : "swing_1_7d",
     copilotGeneratedAt: asString(record.copilotGeneratedAt) || undefined,
     copilotRunId: asString(record.copilotRunId) || undefined
   };
@@ -464,6 +483,7 @@ function buildExecutionPreview(
   };
 } {
   const credentials = getExecutionCredentials();
+  const horizon = getCopilotHorizonOption(request.copilotHorizon);
   const adjustments: string[] = [];
   const warnings: string[] = [];
   const tickSize = Number(symbol.tickSize);
@@ -720,8 +740,17 @@ function buildExecutionPreview(
 
   const stopDistancePct = Math.abs(normalizedEntry - normalizedStop) / normalizedEntry;
 
-  if (stopDistancePct < 0.0025) {
-    warnings.push("Stop distance remains very tight after normalization and may be too sensitive for live execution.");
+  if (stopDistancePct < horizon.minimumStopDistancePct) {
+    throw new ExecutionServiceError(
+      "STOP_DISTANCE_TOO_TIGHT",
+      400,
+      false,
+      `The ${horizon.shortLabel.toLowerCase()} setup stop distance is too tight for live execution.`,
+      [
+        `Actual stop distance: ${(stopDistancePct * 100).toFixed(2)}%`,
+        `Minimum ${horizon.shortLabel.toLowerCase()} stop distance: ${(horizon.minimumStopDistancePct * 100).toFixed(2)}%`
+      ]
+    );
   }
 
   warnings.push("Execution uses SoDEX testnet perps with a bracket order plus attached market TP/SL stops.");

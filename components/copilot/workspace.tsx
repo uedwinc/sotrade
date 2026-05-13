@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useState, useTransition } from "react";
+import { useState } from "react";
 import {
   Activity,
   AlertCircle,
@@ -117,8 +117,9 @@ export function CopilotWorkspace({
   const [executionPreview, setExecutionPreview] = useState<ExecutionPreviewResponse | null>(null);
   const [executionSubmit, setExecutionSubmit] = useState<ExecutionSubmitResponse | null>(null);
   const [executionError, setExecutionError] = useState<ExecutionErrorResponse | null>(null);
-  const [isPending, startTransition] = useTransition();
-  const [isExecutionPending, startExecutionTransition] = useTransition();
+  const [isGenerating, setIsGenerating] = useState(false);
+  const [isPreviewingExecution, setIsPreviewingExecution] = useState(false);
+  const [isSubmittingExecution, setIsSubmittingExecution] = useState(false);
 
   const activeSnapshot = result?.signalSnapshot ?? initialSignalSnapshot;
   const activePriceAnchor = result?.priceAnchor ?? initialPriceAnchor;
@@ -151,6 +152,7 @@ export function CopilotWorkspace({
       stopLossUsd: result.tradePlan.stopLossUsd,
       takeProfitUsd: result.tradePlan.takeProfitUsd,
       positionSizeBtc: result.sizing.positionSizeBtc,
+      copilotHorizon: result.horizon,
       copilotGeneratedAt: result.generatedAt,
       copilotRunId: result.persistence.id
     };
@@ -178,64 +180,60 @@ export function CopilotWorkspace({
             </div>
             <form
               className="mt-6 space-y-5"
-              onSubmit={(event) => {
+              onSubmit={async (event) => {
                 event.preventDefault();
 
-                startTransition(() => {
-                  void (async () => {
-                    try {
-                      setError(null);
+                try {
+                  setIsGenerating(true);
+                  setError(null);
+                  setExecutionPreview(null);
+                  setExecutionSubmit(null);
+                  setExecutionError(null);
 
-                      const response = await fetch("/api/copilot/thesis", {
-                        method: "POST",
-                        headers: {
-                          "content-type": "application/json"
-                        },
-                        body: JSON.stringify({
-                          asset: "BTC",
-                          horizon: selectedHorizon,
-                          accountEquityUsd: Number(accountEquityUsd),
-                          maxRiskPct: Number(maxRiskPct)
-                        })
-                      });
-                      const body = (await response.json()) as
-                        | CopilotResponse
-                        | CopilotErrorResponse;
+                  const response = await fetch("/api/copilot/thesis", {
+                    method: "POST",
+                    headers: {
+                      "content-type": "application/json"
+                    },
+                    body: JSON.stringify({
+                      asset: "BTC",
+                      horizon: selectedHorizon,
+                      accountEquityUsd: Number(accountEquityUsd),
+                      maxRiskPct: Number(maxRiskPct)
+                    })
+                  });
+                  const body = (await response.json()) as
+                    | CopilotResponse
+                    | CopilotErrorResponse;
 
-                      if (!response.ok) {
-                        setResult(null);
-                        setError(body as CopilotErrorResponse);
-                        setExecutionPreview(null);
-                        setExecutionSubmit(null);
-                        setExecutionError(null);
-                        return;
-                      }
+                  if (!response.ok) {
+                    setResult(null);
+                    setError(body as CopilotErrorResponse);
+                    return;
+                  }
 
-                      setResult(body as CopilotResponse);
-                      setExecutionPreview(null);
-                      setExecutionSubmit(null);
-                      setExecutionError(null);
-                    } catch (requestError) {
-                      setResult(null);
-                      setError({
-                        error: {
-                          code: "CLIENT_REQUEST_FAILED",
-                          message: "The browser could not complete the Copilot request.",
-                          retryable: true,
-                          details: [
-                            requestError instanceof Error
-                              ? requestError.message
-                              : "Unknown client request error"
-                          ]
-                        },
-                        model: {
-                          provider: "bedrock",
-                          modelId: "unknown"
-                        }
-                      });
+                  setResult(body as CopilotResponse);
+                } catch (requestError) {
+                  setResult(null);
+                  setError({
+                    error: {
+                      code: "CLIENT_REQUEST_FAILED",
+                      message: "The browser could not complete the Copilot request.",
+                      retryable: true,
+                      details: [
+                        requestError instanceof Error
+                          ? requestError.message
+                          : "Unknown client request error"
+                      ]
+                    },
+                    model: {
+                      provider: "bedrock",
+                      modelId: "unknown"
                     }
-                  })();
-                });
+                  });
+                } finally {
+                  setIsGenerating(false);
+                }
               }}
             >
               <label className="grid gap-2">
@@ -305,10 +303,10 @@ export function CopilotWorkspace({
 
               <button
                 type="submit"
-                disabled={isPending}
+                disabled={isGenerating}
                 className="inline-flex w-full items-center justify-center rounded-full bg-ink px-5 py-3 text-sm font-medium text-cloud transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-60"
               >
-                {isPending ? (
+                {isGenerating ? (
                   <span className="inline-flex items-center gap-2">
                     <LoaderCircle className="h-4 w-4 animate-spin" />
                     Generating trade plan...
@@ -388,7 +386,7 @@ export function CopilotWorkspace({
         </div>
 
         <div className="space-y-6">
-          {isPending ? (
+          {isGenerating ? (
             <Panel className="border-signal/20 bg-signal/5">
               <div className="flex items-start gap-3">
                 <LoaderCircle className="mt-1 h-5 w-5 animate-spin text-signal" />
@@ -594,118 +592,116 @@ export function CopilotWorkspace({
                       <div className="flex flex-wrap gap-3">
                         <button
                           type="button"
-                          disabled={isExecutionPending}
-                          onClick={() => {
+                          disabled={isPreviewingExecution || isSubmittingExecution}
+                          onClick={async () => {
                             const requestPayload = buildExecutionRequest();
 
                             if (!requestPayload) {
                               return;
                             }
 
-                            startExecutionTransition(() => {
-                              void (async () => {
-                                try {
-                                  setExecutionError(null);
-                                  setExecutionSubmit(null);
+                            try {
+                              setIsPreviewingExecution(true);
+                              setExecutionError(null);
+                              setExecutionSubmit(null);
 
-                                  const response = await fetch("/api/execution/preview", {
-                                    method: "POST",
-                                    headers: {
-                                      "content-type": "application/json"
-                                    },
-                                    body: JSON.stringify(requestPayload)
-                                  });
-                                  const body = (await response.json()) as
-                                    | ExecutionPreviewResponse
-                                    | ExecutionErrorResponse;
+                              const response = await fetch("/api/execution/preview", {
+                                method: "POST",
+                                headers: {
+                                  "content-type": "application/json"
+                                },
+                                body: JSON.stringify(requestPayload)
+                              });
+                              const body = (await response.json()) as
+                                | ExecutionPreviewResponse
+                                | ExecutionErrorResponse;
 
-                                  if (!response.ok) {
-                                    setExecutionPreview(null);
-                                    setExecutionError(body as ExecutionErrorResponse);
-                                    return;
-                                  }
+                              if (!response.ok) {
+                                setExecutionPreview(null);
+                                setExecutionError(body as ExecutionErrorResponse);
+                                return;
+                              }
 
-                                  setExecutionPreview(body as ExecutionPreviewResponse);
-                                } catch (previewError) {
-                                  setExecutionPreview(null);
-                                  setExecutionError({
-                                    error: {
-                                      code: "EXECUTION_PREVIEW_FAILED",
-                                      message: "The browser could not build a SoDEX execution preview.",
-                                      retryable: true,
-                                      details: [
-                                        previewError instanceof Error
-                                          ? previewError.message
-                                          : "Unknown execution preview error"
-                                      ]
-                                    }
-                                  });
+                              setExecutionPreview(body as ExecutionPreviewResponse);
+                            } catch (previewError) {
+                              setExecutionPreview(null);
+                              setExecutionError({
+                                error: {
+                                  code: "EXECUTION_PREVIEW_FAILED",
+                                  message: "The browser could not build a SoDEX execution preview.",
+                                  retryable: true,
+                                  details: [
+                                    previewError instanceof Error
+                                      ? previewError.message
+                                      : "Unknown execution preview error"
+                                  ]
                                 }
-                              })();
-                            });
+                              });
+                            } finally {
+                              setIsPreviewingExecution(false);
+                            }
                           }}
                           className="inline-flex items-center justify-center rounded-full border border-line bg-paper px-5 py-3 text-sm font-medium text-ink transition hover:border-ink/25 disabled:cursor-not-allowed disabled:opacity-60"
                         >
-                          {isExecutionPending && !executionSubmit
+                          {isPreviewingExecution
                             ? "Preparing preview..."
                             : "Preview SoDEX order packet"}
                         </button>
 
                         <button
                           type="button"
-                          disabled={isExecutionPending}
-                          onClick={() => {
+                          disabled={isPreviewingExecution || isSubmittingExecution}
+                          onClick={async () => {
                             const requestPayload = buildExecutionRequest();
 
                             if (!requestPayload) {
                               return;
                             }
 
-                            startExecutionTransition(() => {
-                              void (async () => {
-                                try {
-                                  setExecutionError(null);
+                            try {
+                              setIsSubmittingExecution(true);
+                              setExecutionError(null);
 
-                                  const response = await fetch("/api/execution/submit", {
-                                    method: "POST",
-                                    headers: {
-                                      "content-type": "application/json"
-                                    },
-                                    body: JSON.stringify(requestPayload)
-                                  });
-                                  const body = (await response.json()) as
-                                    | ExecutionSubmitResponse
-                                    | ExecutionErrorResponse;
+                              const response = await fetch("/api/execution/submit", {
+                                method: "POST",
+                                headers: {
+                                  "content-type": "application/json"
+                                },
+                                body: JSON.stringify(requestPayload)
+                              });
+                              const body = (await response.json()) as
+                                | ExecutionSubmitResponse
+                                | ExecutionErrorResponse;
 
-                                  if (!response.ok) {
-                                    setExecutionSubmit(null);
-                                    setExecutionError(body as ExecutionErrorResponse);
-                                    return;
-                                  }
+                              if (!response.ok) {
+                                setExecutionSubmit(null);
+                                setExecutionError(body as ExecutionErrorResponse);
+                                return;
+                              }
 
-                                  setExecutionSubmit(body as ExecutionSubmitResponse);
-                                  setExecutionPreview(body as ExecutionPreviewResponse);
-                                } catch (submitError) {
-                                  setExecutionSubmit(null);
-                                  setExecutionError({
-                                    error: {
-                                      code: "EXECUTION_SUBMIT_FAILED",
-                                      message: "The browser could not submit the SoDEX execution request.",
-                                      retryable: true,
-                                      details: [
-                                        submitError instanceof Error
-                                          ? submitError.message
-                                          : "Unknown execution submit error"
-                                      ]
-                                    }
-                                  });
+                              setExecutionSubmit(body as ExecutionSubmitResponse);
+                              setExecutionPreview(body as ExecutionPreviewResponse);
+                            } catch (submitError) {
+                              setExecutionSubmit(null);
+                              setExecutionError({
+                                error: {
+                                  code: "EXECUTION_SUBMIT_FAILED",
+                                  message: "The browser could not submit the SoDEX execution request.",
+                                  retryable: true,
+                                  details: [
+                                    submitError instanceof Error
+                                      ? submitError.message
+                                      : "Unknown execution submit error"
+                                  ]
                                 }
-                              })();
-                            });
+                              });
+                            } finally {
+                              setIsSubmittingExecution(false);
+                            }
                           }}
                           className="inline-flex items-center justify-center rounded-full bg-ink px-5 py-3 text-sm font-medium text-cloud transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-60"
                         >
-                          {isExecutionPending && executionSubmit === null
+                          {isSubmittingExecution
                             ? "Submitting..."
                             : "Execute on SoDEX testnet"}
                         </button>

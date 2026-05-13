@@ -7,6 +7,7 @@ export interface CopilotHorizonOption {
   windowLabel: string;
   summary: string;
   promptGuidance: string;
+  minimumStopDistancePct: number;
 }
 
 export const copilotHorizonOptions: CopilotHorizonOption[] = [
@@ -17,7 +18,8 @@ export const copilotHorizonOptions: CopilotHorizonOption[] = [
     windowLabel: "1h-1d",
     summary: "Faster same-day posture with tighter timing and quicker invalidation.",
     promptGuidance:
-      "Favor a shorter-duration setup that should resolve within the same day or next session. Keep the thesis reactive, the invalidation tight but realistic, and the take-profit structure concise."
+      "Favor a shorter-duration setup that should resolve within the same day or next session. Keep the thesis reactive, the invalidation tight but realistic, and the take-profit structure concise.",
+    minimumStopDistancePct: 0.004
   },
   {
     id: "swing_1_7d",
@@ -26,7 +28,8 @@ export const copilotHorizonOptions: CopilotHorizonOption[] = [
     windowLabel: "1-7d",
     summary: "Research-led multi-day setup with balanced patience and clear invalidation.",
     promptGuidance:
-      "Favor a multi-day setup over the next 1 to 7 days. Balance confirmation with patience, and use a trade structure that fits a research-driven swing thesis rather than a scalp."
+      "Favor a multi-day setup over the next 1 to 7 days. Balance confirmation with patience, and use a trade structure that fits a research-driven swing thesis rather than a scalp.",
+    minimumStopDistancePct: 0.008
   },
   {
     id: "position_1w_4w",
@@ -35,7 +38,8 @@ export const copilotHorizonOptions: CopilotHorizonOption[] = [
     windowLabel: "1w-4w",
     summary: "Slower positioning cycle with wider thesis room and staged exits.",
     promptGuidance:
-      "Favor a slower multi-day to multi-week positioning plan. Allow wider invalidation when justified, think in staged exits, and avoid framing the setup like an intraday trade."
+      "Favor a slower multi-day to multi-week positioning plan. Allow wider invalidation when justified, think in staged exits, and avoid framing the setup like an intraday trade.",
+    minimumStopDistancePct: 0.015
   }
 ];
 

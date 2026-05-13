@@ -184,7 +184,8 @@ function buildUserPrompt(input: {
           id: input.request.horizon,
           label: horizon.label,
           window: horizon.windowLabel,
-          summary: horizon.summary
+          summary: horizon.summary,
+          minimumStopDistancePct: horizon.minimumStopDistancePct
         },
         accountEquityUsd: input.request.accountEquityUsd,
         maxRiskPct: input.request.maxRiskPct,
@@ -202,6 +203,7 @@ function buildUserPrompt(input: {
         "If actionable is false, use null for entryPriceUsd and stopLossUsd, and use an empty takeProfitUsd array.",
         "Keep rationale and risks concise but specific.",
         "Reference the supplied signal evidence rather than generic market commentary.",
+        `If actionable is true, keep the stop distance at or above ${(horizon.minimumStopDistancePct * 100).toFixed(2)}% for this horizon.`,
         horizon.promptGuidance
       ]
     },
@@ -399,10 +401,12 @@ async function generateStructuredOutput(input: {
 }
 
 function normalizeTradePlan(
+  request: CopilotRequest,
   thesis: CopilotThesis,
   tradePlan: CopilotTradePlan
 ): CopilotTradePlan {
   const executionNotes = [...tradePlan.executionNotes];
+  const horizon = getCopilotHorizonOption(request.horizon);
   let actionable = tradePlan.actionable;
   let entryPriceUsd = tradePlan.entryPriceUsd;
   let stopLossUsd = tradePlan.stopLossUsd;
@@ -457,8 +461,10 @@ function normalizeTradePlan(
 
   const stopDistancePct = Math.abs(entryPriceUsd - stopLossUsd) / entryPriceUsd;
 
-  if (stopDistancePct < 0.0025) {
-    executionNotes.unshift("Stop distance was too tight to size safely, so the plan was downgraded to no-trade.");
+  if (stopDistancePct < horizon.minimumStopDistancePct) {
+    executionNotes.unshift(
+      `Stop distance was tighter than the ${horizon.shortLabel.toLowerCase()} minimum of ${(horizon.minimumStopDistancePct * 100).toFixed(2)}%, so the plan was downgraded to no-trade.`
+    );
     actionable = false;
   }
 
@@ -660,6 +666,7 @@ export async function generateCopilotResponse(
     signalSnapshot
   });
   const normalizedTradePlan = normalizeTradePlan(
+    request,
     modelOutput.thesis,
     modelOutput.tradePlan
   );
