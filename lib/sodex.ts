@@ -29,11 +29,26 @@ interface PerpsSymbol {
   id: number;
   name: string;
   tickSize: string;
+  minPrice: string;
+  maxPrice: string;
   stepSize: string;
   minQuantity: string;
+  maxQuantity: string;
+  marketMinQuantity: string;
+  marketMaxQuantity: string;
   minNotional: string;
+  maxNotional: string;
+  buyLimitUpRatio: string;
+  sellLimitDownRatio: string;
+  marketDeviationRatio: string;
+  status: string;
   quantityPrecision?: number;
   pricePrecision?: number;
+}
+
+interface PerpsMarketContext {
+  markPrice: number;
+  indexPrice: number;
 }
 
 interface ParsedExecutionRequest {
@@ -270,9 +285,19 @@ async function fetchPerpsSymbol(): Promise<PerpsSymbol> {
         id: asNumber(record.id),
         name: asString(record.name),
         tickSize: asString(record.tickSize),
+        minPrice: asString(record.minPrice),
+        maxPrice: asString(record.maxPrice),
         stepSize: asString(record.stepSize),
         minQuantity: asString(record.minQuantity),
+        maxQuantity: asString(record.maxQuantity),
+        marketMinQuantity: asString(record.marketMinQuantity),
+        marketMaxQuantity: asString(record.marketMaxQuantity),
         minNotional: asString(record.minNotional),
+        maxNotional: asString(record.maxNotional),
+        buyLimitUpRatio: asString(record.buyLimitUpRatio),
+        sellLimitDownRatio: asString(record.sellLimitDownRatio),
+        marketDeviationRatio: asString(record.marketDeviationRatio),
+        status: asString(record.status),
         quantityPrecision: asNumber(record.quantityPrecision) ?? undefined,
         pricePrecision: asNumber(record.pricePrecision) ?? undefined
       };
@@ -292,11 +317,72 @@ async function fetchPerpsSymbol(): Promise<PerpsSymbol> {
     id: candidate.id,
     name: "BTC-USD",
     tickSize: candidate.tickSize,
+    minPrice: candidate.minPrice || "0",
+    maxPrice: candidate.maxPrice || "0",
     stepSize: candidate.stepSize,
     minQuantity: candidate.minQuantity || "0",
+    maxQuantity: candidate.maxQuantity || "0",
+    marketMinQuantity: candidate.marketMinQuantity || "0",
+    marketMaxQuantity: candidate.marketMaxQuantity || "0",
     minNotional: candidate.minNotional || "0",
+    maxNotional: candidate.maxNotional || "0",
+    buyLimitUpRatio: candidate.buyLimitUpRatio || "0",
+    sellLimitDownRatio: candidate.sellLimitDownRatio || "0",
+    marketDeviationRatio: candidate.marketDeviationRatio || "0",
+    status: candidate.status || "UNKNOWN",
     quantityPrecision: candidate.quantityPrecision ?? decimalPlaces(candidate.stepSize),
     pricePrecision: candidate.pricePrecision ?? decimalPlaces(candidate.tickSize)
+  };
+}
+
+async function fetchPerpsMarketContext(): Promise<PerpsMarketContext> {
+  const { perpsRestUrl } = getExecutionCredentials();
+  const response = await fetch(`${perpsRestUrl}/markets/mark-prices?symbol=BTC-USD`, {
+    cache: "no-store",
+    headers: {
+      Accept: "application/json"
+    }
+  });
+
+  if (!response.ok) {
+    throw new ExecutionServiceError(
+      "SODEX_MARK_PRICE_FETCH_FAILED",
+      502,
+      true,
+      `SoDEX mark price lookup failed with HTTP ${response.status}.`
+    );
+  }
+
+  const body = (await response.json()) as SodexEnvelope<unknown>;
+  const list = Array.isArray(body.data) ? body.data : [];
+  const candidate = list
+    .map((entry) => {
+      const record = asRecord(entry);
+
+      if (!record) {
+        return null;
+      }
+
+      return {
+        symbol: asString(record.symbol),
+        markPrice: asNumber(record.markPrice),
+        indexPrice: asNumber(record.indexPrice)
+      };
+    })
+    .find((entry) => entry?.symbol === "BTC-USD");
+
+  if (!candidate?.markPrice || !candidate.indexPrice) {
+    throw new ExecutionServiceError(
+      "SODEX_MARK_PRICE_UNAVAILABLE",
+      502,
+      true,
+      "BTC-USD mark price is unavailable from SoDEX testnet."
+    );
+  }
+
+  return {
+    markPrice: candidate.markPrice,
+    indexPrice: candidate.indexPrice
   };
 }
 
@@ -364,7 +450,8 @@ function parseExecutionRequest(body: unknown): ParsedExecutionRequest {
 
 function buildExecutionPreview(
   request: ParsedExecutionRequest,
-  symbol: PerpsSymbol
+  symbol: PerpsSymbol,
+  marketContext: PerpsMarketContext
 ): ExecutionPreviewResponse & {
   requestBody: {
     accountID: number;
@@ -377,8 +464,16 @@ function buildExecutionPreview(
   const warnings: string[] = [];
   const tickSize = Number(symbol.tickSize);
   const stepSize = Number(symbol.stepSize);
+  const minPrice = Number(symbol.minPrice);
+  const maxPrice = Number(symbol.maxPrice);
   const minQuantity = Number(symbol.minQuantity);
+  const maxQuantity = Number(symbol.maxQuantity);
+  const marketMinQuantity = Number(symbol.marketMinQuantity);
+  const marketMaxQuantity = Number(symbol.marketMaxQuantity);
   const minNotional = Number(symbol.minNotional);
+  const maxNotional = Number(symbol.maxNotional);
+  const buyLimitUpRatio = Number(symbol.buyLimitUpRatio);
+  const sellLimitDownRatio = Number(symbol.sellLimitDownRatio);
   const pricePrecision = symbol.pricePrecision ?? decimalPlaces(symbol.tickSize);
   const quantityPrecision = symbol.quantityPrecision ?? decimalPlaces(symbol.stepSize);
 
@@ -424,6 +519,45 @@ function buildExecutionPreview(
     );
   }
 
+  if (maxQuantity > 0 && normalizedQuantity > maxQuantity) {
+    throw new ExecutionServiceError(
+      "INVALID_QUANTITY",
+      400,
+      false,
+      "The Copilot position size exceeds the SoDEX maximum quantity after normalization.",
+      [
+        `Normalized quantity: ${normalizedQuantity}`,
+        `Maximum quantity: ${symbol.maxQuantity}`
+      ]
+    );
+  }
+
+  if (marketMinQuantity > 0 && normalizedQuantity < marketMinQuantity) {
+    throw new ExecutionServiceError(
+      "INVALID_MARKET_QUANTITY",
+      400,
+      false,
+      "The attached TP/SL market order quantity is below the SoDEX market minimum quantity.",
+      [
+        `Normalized quantity: ${normalizedQuantity}`,
+        `Market minimum quantity: ${symbol.marketMinQuantity}`
+      ]
+    );
+  }
+
+  if (marketMaxQuantity > 0 && normalizedQuantity > marketMaxQuantity) {
+    throw new ExecutionServiceError(
+      "INVALID_MARKET_QUANTITY",
+      400,
+      false,
+      "The attached TP/SL market order quantity exceeds the SoDEX market maximum quantity.",
+      [
+        `Normalized quantity: ${normalizedQuantity}`,
+        `Market maximum quantity: ${symbol.marketMaxQuantity}`
+      ]
+    );
+  }
+
   if (normalizedEntry * normalizedQuantity < minNotional) {
     throw new ExecutionServiceError(
       "INVALID_NOTIONAL",
@@ -436,6 +570,45 @@ function buildExecutionPreview(
       ]
     );
   }
+
+  if (maxNotional > 0 && normalizedEntry * normalizedQuantity > maxNotional) {
+    throw new ExecutionServiceError(
+      "INVALID_NOTIONAL",
+      400,
+      false,
+      "The normalized entry order notional exceeds the SoDEX maximum notional.",
+      [
+        `Normalized notional: ${round(normalizedEntry * normalizedQuantity, 2)}`,
+        `Maximum notional: ${symbol.maxNotional}`
+      ]
+    );
+  }
+
+  function assertPriceInStaticRange(value: number, label: string) {
+    if (minPrice > 0 && value < minPrice) {
+      throw new ExecutionServiceError(
+        "INVALID_PRICE_RANGE",
+        400,
+        false,
+        `${label} is below the SoDEX minimum price.`,
+        [`${label}: ${value}`, `Minimum price: ${symbol.minPrice}`]
+      );
+    }
+
+    if (maxPrice > 0 && value > maxPrice) {
+      throw new ExecutionServiceError(
+        "INVALID_PRICE_RANGE",
+        400,
+        false,
+        `${label} is above the SoDEX maximum price.`,
+        [`${label}: ${value}`, `Maximum price: ${symbol.maxPrice}`]
+      );
+    }
+  }
+
+  assertPriceInStaticRange(normalizedEntry, "Entry price");
+  assertPriceInStaticRange(normalizedStop, "Stop-loss trigger price");
+  assertPriceInStaticRange(normalizedTp, "Take-profit trigger price");
 
   if (request.thesisBias === "long") {
     if (!(normalizedStop < normalizedEntry && normalizedTp > normalizedEntry)) {
@@ -455,6 +628,92 @@ function buildExecutionPreview(
     );
   }
 
+  if (request.thesisBias === "long") {
+    const maxBuyLimitPrice = marketContext.markPrice * (1 + buyLimitUpRatio);
+
+    if (buyLimitUpRatio > 0 && normalizedEntry > maxBuyLimitPrice) {
+      throw new ExecutionServiceError(
+        "INVALID_ENTRY_PRICE",
+        400,
+        false,
+        "The long entry price is above SoDEX's current buy-limit guardrail.",
+        [
+          `Entry price: ${normalizedEntry}`,
+          `Current mark price: ${round(marketContext.markPrice, 2)}`,
+          `Allowed maximum buy limit price: ${round(maxBuyLimitPrice, 2)}`
+        ]
+      );
+    }
+
+    if (normalizedTp <= marketContext.markPrice) {
+      throw new ExecutionServiceError(
+        "INVALID_TAKE_PROFIT_TRIGGER",
+        400,
+        false,
+        "The long take-profit trigger is already at or below the current mark price.",
+        [
+          `Take-profit trigger: ${normalizedTp}`,
+          `Current mark price: ${round(marketContext.markPrice, 2)}`
+        ]
+      );
+    }
+
+    if (normalizedStop >= marketContext.markPrice) {
+      throw new ExecutionServiceError(
+        "INVALID_STOP_LOSS_TRIGGER",
+        400,
+        false,
+        "The long stop-loss trigger is already at or above the current mark price.",
+        [
+          `Stop-loss trigger: ${normalizedStop}`,
+          `Current mark price: ${round(marketContext.markPrice, 2)}`
+        ]
+      );
+    }
+  } else {
+    const minSellLimitPrice = marketContext.markPrice * (1 - sellLimitDownRatio);
+
+    if (sellLimitDownRatio > 0 && normalizedEntry < minSellLimitPrice) {
+      throw new ExecutionServiceError(
+        "INVALID_ENTRY_PRICE",
+        400,
+        false,
+        "The short entry price is below SoDEX's current sell-limit guardrail.",
+        [
+          `Entry price: ${normalizedEntry}`,
+          `Current mark price: ${round(marketContext.markPrice, 2)}`,
+          `Allowed minimum sell limit price: ${round(minSellLimitPrice, 2)}`
+        ]
+      );
+    }
+
+    if (normalizedTp >= marketContext.markPrice) {
+      throw new ExecutionServiceError(
+        "INVALID_TAKE_PROFIT_TRIGGER",
+        400,
+        false,
+        "The short take-profit trigger is already at or above the current mark price.",
+        [
+          `Take-profit trigger: ${normalizedTp}`,
+          `Current mark price: ${round(marketContext.markPrice, 2)}`
+        ]
+      );
+    }
+
+    if (normalizedStop <= marketContext.markPrice) {
+      throw new ExecutionServiceError(
+        "INVALID_STOP_LOSS_TRIGGER",
+        400,
+        false,
+        "The short stop-loss trigger is already at or below the current mark price.",
+        [
+          `Stop-loss trigger: ${normalizedStop}`,
+          `Current mark price: ${round(marketContext.markPrice, 2)}`
+        ]
+      );
+    }
+  }
+
   const stopDistancePct = Math.abs(normalizedEntry - normalizedStop) / normalizedEntry;
 
   if (stopDistancePct < 0.0025) {
@@ -463,6 +722,9 @@ function buildExecutionPreview(
 
   warnings.push("Execution uses SoDEX testnet perps with a bracket order plus attached market TP/SL stops.");
   warnings.push("This preview currently uses the first take-profit level from the Copilot plan for live bracket execution.");
+  warnings.push(
+    `Current SoDEX mark price is ${round(marketContext.markPrice, 2)} and current index price is ${round(marketContext.indexPrice, 2)}.`
+  );
 
   const entrySideCode = entrySide(request.thesisBias);
   const exitSideCode = oppositeSide(request.thesisBias);
@@ -643,6 +905,19 @@ async function submitPerpsBracketOrder(input: {
     );
   }
 
+  const orderResults = Array.isArray(body.data) ? body.data : [];
+  const rejectedItems = orderResults.filter((item) => item.code !== 0);
+
+  if (rejectedItems.length > 0) {
+    throw new ExecutionServiceError(
+      "SODEX_ORDER_REJECTED",
+      400,
+      false,
+      "SoDEX rejected one or more orders in the execution packet.",
+      rejectedItems.map((item) => `${item.clOrdID}: ${item.error ?? `code ${item.code}`}`)
+    );
+  }
+
   const submittedAt = new Date().toISOString();
   const execution: ExecutionSubmitResponse = {
     environment: "testnet",
@@ -658,8 +933,8 @@ async function submitPerpsBracketOrder(input: {
       code: body.code,
       error: body.error,
       timestamp: body.timestamp,
-      data: Array.isArray(body.data)
-        ? body.data.map((item) => ({
+      data: orderResults.length > 0
+        ? orderResults.map((item) => ({
             code: item.code,
             clOrdID: item.clOrdID,
             error: item.error,
@@ -697,8 +972,12 @@ export async function generateExecutionPreview(
     orders: Array<Record<string, boolean | number | string>>;
   };
 }> {
-  const symbol = await fetchPerpsSymbol();
-  return buildExecutionPreview(request, symbol);
+  const [symbol, marketContext] = await Promise.all([
+    fetchPerpsSymbol(),
+    fetchPerpsMarketContext()
+  ]);
+
+  return buildExecutionPreview(request, symbol, marketContext);
 }
 
 export async function submitExecutionPlan(request: ParsedExecutionRequest) {
