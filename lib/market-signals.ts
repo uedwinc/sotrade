@@ -1,8 +1,10 @@
 import type { NormalizedSignal, SignalSnapshot } from "@/lib/domain";
 import {
+  fetchCurrentEtfDataMetrics,
   fetchEtfHistoricalInflow,
   fetchFeaturedNews,
   getSoSoValueReadiness,
+  type SoSoValueCurrentEtfMetrics,
   type SoSoValueEtfPoint,
   type SoSoValueNewsItem
 } from "@/lib/sosovalue";
@@ -56,6 +58,14 @@ const MACRO_RISK_ON = [
   "soft landing",
   "stimulus"
 ];
+
+function getErrorMessage(error: unknown) {
+  if (error instanceof Error) {
+    return error.message;
+  }
+
+  return "unknown error";
+}
 
 function clamp(value: number, min: number, max: number) {
   return Math.min(max, Math.max(min, value));
@@ -124,8 +134,9 @@ function average(values: number[]) {
 }
 
 function buildEtfSignal(asset: "BTC" | "ETH", points: SoSoValueEtfPoint[]): NormalizedSignal {
-  const latest = points.at(-1);
-  const recent = points.slice(-3);
+  const sorted = [...points].sort((left, right) => left.date.localeCompare(right.date));
+  const latest = sorted.at(-1);
+  const recent = sorted.slice(-3);
   const threeDayFlow = recent.reduce((sum, point) => sum + point.totalNetInflow, 0);
   const consistency = recent.filter((point) => point.totalNetInflow > 0).length / Math.max(recent.length, 1);
   const strength = clamp(Math.round(Math.min(Math.abs(threeDayFlow) / 5_000_000, 100)), 0, 100);
@@ -157,15 +168,57 @@ function buildEtfSignal(asset: "BTC" | "ETH", points: SoSoValueEtfPoint[]): Norm
   };
 }
 
+function buildEtfSignalFromCurrentMetrics(
+  asset: "BTC" | "ETH",
+  metrics: SoSoValueCurrentEtfMetrics
+): NormalizedSignal {
+  const latestFlow = metrics.dailyNetInflow.value;
+  const strength = clamp(
+    Math.round(Math.min(Math.abs(latestFlow) / 5_000_000, 100)),
+    0,
+    100
+  );
+  const bias = latestFlow > 0 ? "long" : latestFlow < 0 ? "short" : "neutral";
+
+  return {
+    id: `sosovalue-${asset.toLowerCase()}-etf-current`,
+    kind: "etf_inflow",
+    asset,
+    title: `${asset} ETF flow snapshot`,
+    summary:
+      `${asset} spot ETF daily net flow is ${latestFlow >= 0 ? "supportive" : "soft"} at ` +
+      `${compactUsd(latestFlow)} on the latest reported session.`,
+    strength,
+    bias,
+    observedAt: toIsoTimestamp(metrics.dailyNetInflow.lastUpdateDate),
+    source: "sosovalue",
+    evidence: [
+      `Latest daily net inflow: ${compactUsd(metrics.dailyNetInflow.value)}`,
+      `Cumulative net inflow: ${compactUsd(metrics.cumNetInflow.value)}`,
+      `Total net assets: ${compactUsd(metrics.totalNetAssets.value)}`
+    ],
+    inference:
+      "This ETF signal is using SoSoValue's current ETF metrics endpoint because the historical inflow endpoint was unavailable or returned no data.",
+    metadata: {
+      latestNetInflow: metrics.dailyNetInflow.value,
+      cumNetInflow: metrics.cumNetInflow.value,
+      totalNetAssets: metrics.totalNetAssets.value,
+      totalTokenHoldings: metrics.totalTokenHoldings.value
+    }
+  };
+}
+
 function buildNewsSentimentSignal(items: SoSoValueNewsItem[]): NormalizedSignal {
-  const scored = items.map((item) => {
-    const text = pickText(item);
-    return {
-      item,
-      headline: text.title || "Untitled SoSoValue item",
-      score: scoreKeywords(text.combined, POSITIVE_KEYWORDS, NEGATIVE_KEYWORDS)
-    };
-  });
+  const scored = items
+    .map((item) => {
+      const text = pickText(item);
+      return {
+        item,
+        headline: text.title || "",
+        score: scoreKeywords(text.combined, POSITIVE_KEYWORDS, NEGATIVE_KEYWORDS)
+      };
+    })
+    .filter((entry) => entry.headline);
   const aggregate = average(scored.map((entry) => entry.score));
   const strength = clamp(Math.round(Math.abs(aggregate) * 22), 8, 82);
   const bias = aggregate > 0.2 ? "long" : aggregate < -0.2 ? "short" : "neutral";
@@ -195,14 +248,16 @@ function buildNewsSentimentSignal(items: SoSoValueNewsItem[]): NormalizedSignal 
 }
 
 function buildMacroSignal(items: SoSoValueNewsItem[]): NormalizedSignal {
-  const scored = items.map((item) => {
-    const text = pickText(item);
-    return {
-      item,
-      headline: text.title || "Untitled macro item",
-      score: scoreKeywords(text.combined, MACRO_RISK_ON, MACRO_RISK_OFF)
-    };
-  });
+  const scored = items
+    .map((item) => {
+      const text = pickText(item);
+      return {
+        item,
+        headline: text.title || "",
+        score: scoreKeywords(text.combined, MACRO_RISK_ON, MACRO_RISK_OFF)
+      };
+    })
+    .filter((entry) => entry.headline);
   const aggregate = average(scored.map((entry) => entry.score));
   const bias = aggregate > 0.15 ? "long" : aggregate < -0.15 ? "short" : "neutral";
   const strength = clamp(Math.round(Math.abs(aggregate) * 24), 10, 84);
@@ -302,7 +357,7 @@ export async function getMarketSignalSnapshot(): Promise<SignalSnapshot> {
     marketFeed: "skipped"
   };
   const notes = [
-    "ETF flow data comes from SoSoValue's official ETF historical inflow endpoint.",
+    "ETF flow data comes from SoSoValue's official ETF endpoints, preferring historical inflow data with a fallback to current ETF metrics.",
     "News and macro signals are inferred from SoSoValue featured feed categories using lightweight keyword scoring.",
     "Rotation is currently a proxy inferred from matched-currency frequency until a direct sector endpoint is integrated."
   ];
@@ -311,12 +366,16 @@ export async function getMarketSignalSnapshot(): Promise<SignalSnapshot> {
   const [
     btcEtfResult,
     ethEtfResult,
+    btcEtfCurrentResult,
+    ethEtfCurrentResult,
     btcNewsResult,
     macroNewsResult,
     marketFeedResult
   ] = await Promise.allSettled([
     fetchEtfHistoricalInflow("us-btc-spot"),
     fetchEtfHistoricalInflow("us-eth-spot"),
+    fetchCurrentEtfDataMetrics("us-btc-spot"),
+    fetchCurrentEtfDataMetrics("us-eth-spot"),
     fetchFeaturedNews({
       currencyId: readiness.btcCurrencyId,
       pageSize: 12,
@@ -335,17 +394,41 @@ export async function getMarketSignalSnapshot(): Promise<SignalSnapshot> {
   if (btcEtfResult.status === "fulfilled" && btcEtfResult.value.length > 0) {
     sourceStatus.btcEtf = "ok";
     signals.push(buildEtfSignal("BTC", btcEtfResult.value));
+  } else if (btcEtfCurrentResult.status === "fulfilled") {
+    sourceStatus.btcEtf = "ok";
+    signals.push(buildEtfSignalFromCurrentMetrics("BTC", btcEtfCurrentResult.value));
+    notes.push("BTC ETF historical inflow was unavailable, so the app fell back to current ETF metrics.");
   } else {
     sourceStatus.btcEtf = "error";
-    notes.push("BTC ETF flow fetch failed or returned no data.");
+    notes.push(
+      `BTC ETF flow fetch failed. Historical: ${
+        btcEtfResult.status === "rejected" ? getErrorMessage(btcEtfResult.reason) : "no data"
+      }. Current metrics: ${
+        btcEtfCurrentResult.status === "rejected"
+          ? getErrorMessage(btcEtfCurrentResult.reason)
+          : "no data"
+      }.`
+    );
   }
 
   if (ethEtfResult.status === "fulfilled" && ethEtfResult.value.length > 0) {
     sourceStatus.ethEtf = "ok";
     signals.push(buildEtfSignal("ETH", ethEtfResult.value));
+  } else if (ethEtfCurrentResult.status === "fulfilled") {
+    sourceStatus.ethEtf = "ok";
+    signals.push(buildEtfSignalFromCurrentMetrics("ETH", ethEtfCurrentResult.value));
+    notes.push("ETH ETF historical inflow was unavailable, so the app fell back to current ETF metrics.");
   } else {
     sourceStatus.ethEtf = "error";
-    notes.push("ETH ETF flow fetch failed or returned no data.");
+    notes.push(
+      `ETH ETF flow fetch failed. Historical: ${
+        ethEtfResult.status === "rejected" ? getErrorMessage(ethEtfResult.reason) : "no data"
+      }. Current metrics: ${
+        ethEtfCurrentResult.status === "rejected"
+          ? getErrorMessage(ethEtfCurrentResult.reason)
+          : "no data"
+      }.`
+    );
   }
 
   if (btcNewsResult.status === "fulfilled" && btcNewsResult.value.length > 0) {

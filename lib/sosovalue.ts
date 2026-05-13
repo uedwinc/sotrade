@@ -10,6 +10,33 @@ export interface SoSoValueEtfPoint {
   cumNetInflow: number;
 }
 
+export interface SoSoValueCurrentEtfMetrics {
+  totalNetAssets: {
+    value: number;
+    lastUpdateDate: string;
+  };
+  totalNetAssetsPercentage: {
+    value: number;
+    lastUpdateDate: string;
+  };
+  totalTokenHoldings: {
+    value: number;
+    lastUpdateDate: string;
+  };
+  dailyNetInflow: {
+    value: number;
+    lastUpdateDate: string;
+  };
+  cumNetInflow: {
+    value: number;
+    lastUpdateDate: string;
+  };
+  dailyTotalValueTraded: {
+    value: number;
+    lastUpdateDate: string;
+  };
+}
+
 export interface SoSoValueNewsItem {
   id: string;
   category?: number;
@@ -141,8 +168,7 @@ async function fetchJson<T>(
   init: RequestInit & { next?: { revalidate?: number } }
 ) {
   const response = await fetch(input, {
-    ...init,
-    cache: "no-store"
+    ...init
   });
 
   if (!response.ok) {
@@ -156,6 +182,15 @@ async function fetchJson<T>(
   }
 
   return body.data;
+}
+
+function parseMetricRecord(value: unknown) {
+  const record = typeof value === "object" && value ? value : {};
+
+  return {
+    value: "value" in record ? asNumber(record.value) : 0,
+    lastUpdateDate: "lastUpdateDate" in record ? asString(record.lastUpdateDate) : ""
+  };
 }
 
 export async function fetchEtfHistoricalInflow(type: EtfType) {
@@ -183,6 +218,29 @@ export async function fetchEtfHistoricalInflow(type: EtfType) {
       cumNetInflow: "cumNetInflow" in item ? asNumber(item.cumNetInflow) : 0
     } satisfies SoSoValueEtfPoint;
   });
+}
+
+export async function fetchCurrentEtfDataMetrics(type: EtfType) {
+  const env = ensureConfigured();
+  const url = `${env.etfBaseUrl}/openapi/v2/etf/currentEtfDataMetrics`;
+  const data = await fetchJson<Record<string, unknown>>(url, {
+    method: "POST",
+    headers: {
+      "content-type": "application/json",
+      "x-soso-api-key": env.apiKey
+    },
+    body: JSON.stringify({ type }),
+    next: { revalidate: 300 }
+  });
+
+  return {
+    totalNetAssets: parseMetricRecord(data.totalNetAssets),
+    totalNetAssetsPercentage: parseMetricRecord(data.totalNetAssetsPercentage),
+    totalTokenHoldings: parseMetricRecord(data.totalTokenHoldings),
+    dailyNetInflow: parseMetricRecord(data.dailyNetInflow),
+    cumNetInflow: parseMetricRecord(data.cumNetInflow),
+    dailyTotalValueTraded: parseMetricRecord(data.dailyTotalValueTraded)
+  } satisfies SoSoValueCurrentEtfMetrics;
 }
 
 export async function fetchFeaturedNews(params: {
