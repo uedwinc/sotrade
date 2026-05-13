@@ -117,6 +117,7 @@ If the response errors:
 After Milestone 2 is healthy and Bedrock access is configured, verify:
 
 - The `/copilot` page shows the structured BTC workspace
+- You can switch between `Intraday / 1h-1d`, `Swing / 1-7d`, and `Position / 1w-4w`
 - You can input account equity and max risk %
 - Clicking `Generate BTC trade plan` returns either:
   - a concrete BTC trade plan with entry / stop / take profits, or

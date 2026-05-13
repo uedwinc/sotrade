@@ -15,7 +15,12 @@ import { Disclosure } from "@/components/ui/disclosure";
 import { Panel } from "@/components/ui/panel";
 import { Pill } from "@/components/ui/pill";
 import { SectionTitle } from "@/components/section-title";
+import {
+  copilotHorizonOptions,
+  getCopilotHorizonOption
+} from "@/lib/copilot-horizons";
 import type {
+  CopilotHorizon,
   CopilotErrorResponse,
   CopilotResponse,
   ExecutionErrorResponse,
@@ -104,6 +109,8 @@ export function CopilotWorkspace({
 }: CopilotWorkspaceProps) {
   const [accountEquityUsd, setAccountEquityUsd] = useState("10000");
   const [maxRiskPct, setMaxRiskPct] = useState("1");
+  const [selectedHorizon, setSelectedHorizon] =
+    useState<CopilotHorizon>("swing_1_7d");
   const [result, setResult] = useState<CopilotResponse | null>(null);
   const [error, setError] = useState<CopilotErrorResponse | null>(null);
   const [executionPreview, setExecutionPreview] = useState<ExecutionPreviewResponse | null>(null);
@@ -115,6 +122,15 @@ export function CopilotWorkspace({
   const activeSnapshot = result?.signalSnapshot ?? initialSignalSnapshot;
   const activePriceAnchor = result?.priceAnchor ?? initialPriceAnchor;
   const activeModelId = result?.model.modelId ?? "anthropic.claude-sonnet-4-6";
+  const activeHorizon = getCopilotHorizonOption(result?.horizon ?? selectedHorizon);
+
+  function resetDecisionState() {
+    setResult(null);
+    setError(null);
+    setExecutionPreview(null);
+    setExecutionSubmit(null);
+    setExecutionError(null);
+  }
 
   function buildExecutionRequest() {
     if (
@@ -144,9 +160,9 @@ export function CopilotWorkspace({
       <Panel>
         <Pill>AI Copilot / Milestone 4</Pill>
         <SectionTitle
-          eyebrow="Structured BTC workspace"
-          title="A simpler Copilot flow: inputs on the left, one decision canvas on the right."
-          description="This workspace is intentionally narrower now. The primary trade decision stays visible first, while evidence, diagnostics, and persistence details move behind expandable sections."
+          eyebrow="Multi-cycle BTC workspace"
+          title="A simpler Copilot flow with one selector for intraday, swing, or position trade cycles."
+          description="This workspace stays intentionally narrow. Choose the trade cycle on the left, keep the primary decision visible first, and open evidence or diagnostics only when you need them."
         />
       </Panel>
 
@@ -176,7 +192,7 @@ export function CopilotWorkspace({
                         },
                         body: JSON.stringify({
                           asset: "BTC",
-                          horizon: "swing_1_7d",
+                          horizon: selectedHorizon,
                           accountEquityUsd: Number(accountEquityUsd),
                           maxRiskPct: Number(maxRiskPct)
                         })
@@ -235,6 +251,32 @@ export function CopilotWorkspace({
 
               <label className="grid gap-2">
                 <span className="text-xs font-semibold uppercase tracking-[0.14em] text-slate">
+                  Trade cycle
+                </span>
+                <select
+                  className="rounded-2xl border border-line bg-paper px-4 py-3 text-base text-ink outline-none transition focus:border-ink/30"
+                  value={selectedHorizon}
+                  onChange={(event) => {
+                    setSelectedHorizon(event.target.value as CopilotHorizon);
+                    resetDecisionState();
+                  }}
+                >
+                  {copilotHorizonOptions.map((option) => (
+                    <option key={option.id} value={option.id}>
+                      {option.label}
+                    </option>
+                  ))}
+                </select>
+              </label>
+
+              <div className="rounded-2xl border border-line bg-paper px-4 py-4">
+                <p className="text-[0.98rem] leading-7 text-ink/76">
+                  {activeHorizon.summary}
+                </p>
+              </div>
+
+              <label className="grid gap-2">
+                <span className="text-xs font-semibold uppercase tracking-[0.14em] text-slate">
                   Max risk (%)
                 </span>
                 <input
@@ -256,7 +298,7 @@ export function CopilotWorkspace({
                   <p className="text-xs font-semibold uppercase tracking-[0.14em] text-slate">
                     Horizon
                   </p>
-                  <p className="mt-2 text-[1rem] font-medium text-ink">Swing / 1-7 days</p>
+                  <p className="mt-2 text-[1rem] font-medium text-ink">{activeHorizon.label}</p>
                 </div>
               </div>
 
@@ -369,6 +411,9 @@ export function CopilotWorkspace({
                     <div className="flex flex-wrap items-center gap-3">
                       <Pill>Primary decision</Pill>
                       <span className="rounded-full border border-line bg-paper px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.12em] text-slate">
+                        {activeHorizon.label}
+                      </span>
+                      <span className="rounded-full border border-line bg-paper px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.12em] text-slate">
                         {result.tradePlan.actionable ? "Actionable" : "No trade"}
                       </span>
                     </div>
@@ -376,7 +421,7 @@ export function CopilotWorkspace({
                       {result.thesis.summary}
                     </h3>
                     <p className="mt-3 text-[1rem] leading-7 text-ink/76">
-                      Generated {formatObservedAt(result.generatedAt)} using {activeModelId}
+                      Generated {formatObservedAt(result.generatedAt)} for {activeHorizon.label} using {activeModelId}
                     </p>
                   </div>
 
@@ -422,7 +467,7 @@ export function CopilotWorkspace({
 
                 {!result.tradePlan.actionable ? (
                   <div className="mt-5 rounded-[20px] border border-line bg-paper p-4 text-[1rem] leading-7 text-ink/76">
-                    The Copilot is intentionally withholding a live setup. That is a valid outcome when the signal stack does not justify a clean swing trade.
+                    The Copilot is intentionally withholding a live setup. That is a valid outcome when the signal stack does not justify a clean {activeHorizon.shortLabel.toLowerCase()} trade.
                   </div>
                 ) : null}
               </Panel>
@@ -911,8 +956,8 @@ export function CopilotWorkspace({
                     Generate one clean BTC view instead of scanning a wall of cards.
                   </h3>
                   <p className="mt-3 text-[1rem] leading-7 text-ink/76">
-                    Use the left rail to set equity and risk, then let the Copilot
-                    assemble a trade plan or explicitly tell you to stay flat.
+                    Use the left rail to set equity, choose a trade cycle, and let
+                    the Copilot assemble a trade plan or explicitly tell you to stay flat.
                   </p>
                 </div>
                 <Link

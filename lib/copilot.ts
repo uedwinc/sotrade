@@ -1,5 +1,9 @@
 import { BedrockRuntimeClient, InvokeModelCommand } from "@aws-sdk/client-bedrock-runtime";
 
+import {
+  getCopilotHorizonOption,
+  isCopilotHorizon
+} from "@/lib/copilot-horizons";
 import { getBedrockEnvironment } from "@/lib/config";
 import { saveCopilotRun } from "@/lib/copilot-persistence";
 import type {
@@ -134,7 +138,7 @@ function buildSystemPrompt() {
     "You are SoTrade Copilot, a crypto trading analyst embedded in a signal-to-trade app.",
     "Use only the supplied SoSoValue signals and the supplied BTC price anchor.",
     "Do not invent unseen market structure, technical levels, indicators, or macro facts.",
-    "Your job is to decide whether there is an actionable BTC swing setup over the next 1 to 7 days.",
+    "Your job is to decide whether there is an actionable BTC setup for the requested trade cycle and time horizon.",
     "If conviction is weak or signals conflict, set actionable to false and bias to neutral if appropriate.",
     "If actionable is true, propose concrete numeric entry, stop loss, and 2 to 3 take-profit prices in USD.",
     "For long setups, stop loss must be below entry and take profits above entry.",
@@ -168,13 +172,20 @@ function buildUserPrompt(input: {
   spotPriceUsd: number;
   signalSnapshot: Awaited<ReturnType<typeof getMarketSignalSnapshot>>;
 }) {
+  const horizon = getCopilotHorizonOption(input.request.horizon);
+
   return JSON.stringify(
     {
-      task: "Generate a BTC swing trade thesis and structured trade plan.",
+      task: `Generate a BTC ${horizon.shortLabel.toLowerCase()} trade thesis and structured trade plan.`,
       outputRequirements: buildSchemaExample(),
       context: {
         asset: input.request.asset,
-        horizon: input.request.horizon,
+        horizon: {
+          id: input.request.horizon,
+          label: horizon.label,
+          window: horizon.windowLabel,
+          summary: horizon.summary
+        },
         accountEquityUsd: input.request.accountEquityUsd,
         maxRiskPct: input.request.maxRiskPct,
         spotPriceUsd: input.spotPriceUsd,
@@ -190,7 +201,8 @@ function buildUserPrompt(input: {
         "Use confidence from 0 to 100.",
         "If actionable is false, use null for entryPriceUsd and stopLossUsd, and use an empty takeProfitUsd array.",
         "Keep rationale and risks concise but specific.",
-        "Reference the supplied signal evidence rather than generic market commentary."
+        "Reference the supplied signal evidence rather than generic market commentary.",
+        horizon.promptGuidance
       ]
     },
     null,
@@ -529,12 +541,12 @@ export function parseCopilotRequest(body: unknown): CopilotRequest {
     );
   }
 
-  if (horizon !== "swing_1_7d") {
+  if (!isCopilotHorizon(horizon)) {
     throw new CopilotServiceError(
       "INVALID_HORIZON",
       400,
       false,
-      "Milestone 3 only supports the swing_1_7d horizon."
+      "Supported horizons are intraday_1h_1d, swing_1_7d, and position_1w_4w."
     );
   }
 
@@ -558,7 +570,7 @@ export function parseCopilotRequest(body: unknown): CopilotRequest {
 
   return {
     asset: "BTC",
-    horizon: "swing_1_7d",
+    horizon,
     accountEquityUsd: round(accountEquityUsd, 2),
     maxRiskPct: round(maxRiskPct, 2)
   };

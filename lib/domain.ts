@@ -47,7 +47,10 @@ export interface SignalSnapshot {
 }
 
 export type CopilotAsset = "BTC";
-export type CopilotHorizon = "swing_1_7d";
+export type CopilotHorizon =
+  | "intraday_1h_1d"
+  | "swing_1_7d"
+  | "position_1w_4w";
 
 export interface PriceAnchor {
   source: "coinbase";

@@ -23,6 +23,7 @@ Milestone 2 adds:
 Milestone 3 adds:
 
 - A structured BTC Copilot workspace on `/copilot`
+- Horizon switching across `intraday_1h_1d`, `swing_1_7d`, and `position_1w_4w`
 - `POST /api/copilot/thesis` for Bedrock-powered trade-plan generation
 - Coinbase BTC price anchoring for entry / TP / SL proposals
 - Optional Postgres persistence for generated Copilot plans

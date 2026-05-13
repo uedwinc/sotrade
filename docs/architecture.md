@@ -105,6 +105,7 @@ Responsibilities:
 ### Milestone 3
 
 - Copilot generation endpoint
+- Horizon-aware Copilot request flow
 - Structured thesis response
 - Trade-plan cards
 - Amazon Bedrock integration
