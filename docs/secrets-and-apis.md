@@ -23,11 +23,23 @@ Where to place it:
 SOSOVALUE_API_KEY=your_key_here
 ```
 
-Base URL currently configured:
+Base URLs currently configured:
 
 ```env
 SOSOVALUE_API_BASE_URL=https://api.sosovalue.xyz
+SOSOVALUE_OPENAPI_BASE_URL=https://openapi.sosovalue.com
 ```
+
+Optional but recommended for the current BTC-focused news snapshot:
+
+```env
+SOSOVALUE_BTC_CURRENCY_ID=1673723677362319866
+```
+
+Note:
+
+- The default `BTC` currency ID above is taken from SoSoValue's official news endpoint example.
+- If SoSoValue gives you a different BTC currency ID later, replace it in `.env.local`.
 
 ## 2. SoDEX testnet trading credentials
 

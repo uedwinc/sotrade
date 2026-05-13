@@ -100,6 +100,7 @@ Responsibilities:
 - SoSoValue API clients
 - Signal normalization
 - Sample live signal fetches
+- Normalized `/api/signals` endpoint
 
 ### Milestone 3
 

@@ -9,8 +9,12 @@ export interface NormalizedSignal {
   title: string;
   summary: string;
   strength: number;
+  bias: MarketBias;
   observedAt: string;
   source: "sosovalue";
+  evidence: string[];
+  inference?: string;
+  metadata?: Record<string, boolean | number | string | null>;
 }
 
 export interface TradePlan {
@@ -32,4 +36,12 @@ export interface SignalRule {
   conditionText: string;
   actionText: string;
   createdAt: string;
+}
+
+export interface SignalSnapshot {
+  generatedAt: string;
+  status: "ok" | "partial" | "not_configured";
+  notes: string[];
+  signals: NormalizedSignal[];
+  sourceStatus: Record<string, "ok" | "error" | "skipped">;
 }

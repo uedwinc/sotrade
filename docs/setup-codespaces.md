@@ -49,6 +49,8 @@ Do not commit `.env.local`. The `.gitignore` already prevents that.
 At the start, focus on:
 
 - `SOSOVALUE_API_KEY`
+- `SOSOVALUE_OPENAPI_BASE_URL`
+- `SOSOVALUE_BTC_CURRENCY_ID`
 - `SODEX_ACCOUNT_ID`
 - `SODEX_API_WALLET_ADDRESS`
 - `SODEX_PRIVATE_KEY`
@@ -83,16 +85,31 @@ For this first milestone, test only:
 - The visual system looks polished on desktop and mobile
 - No secret values are hard-coded anywhere in the repo
 
-## 8. What comes next after milestone 1 passes
+## 8. What to test in milestone 2
+
+After you add a valid `SOSOVALUE_API_KEY`, verify:
+
+- `GET /api/signals` returns a JSON signal bundle
+- The overview page shows a live signal snapshot instead of only static placeholder language
+- The response status is `ok` or `partial`, not `not_configured`
+- BTC ETF flow and market news entries include recent timestamps
+
+If the response errors:
+
+- Recheck the SoSoValue API key
+- Recheck `SOSOVALUE_OPENAPI_BASE_URL`
+- Recheck outbound network access from your Codespace
+
+## 9. What comes next after milestone 2 passes
 
 Once the shell is running correctly, the next implementation slice should be:
 
-1. SoSoValue server-side data clients
-2. Normalized signal models
-3. Copilot thesis API route
-4. Testnet-only SoDEX execution service
+1. Copilot thesis API route
+2. Structured trade-plan generation
+3. Testnet-only SoDEX execution service
+4. Order confirmation and journal persistence
 
-## 9. Safety checklist
+## 10. Safety checklist
 
 Before every push:
 

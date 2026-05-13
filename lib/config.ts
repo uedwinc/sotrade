@@ -37,3 +37,14 @@ export function getTradingEnvironment() {
     perpsWsUrl: readEnv("SODEX_PERPS_WS_URL")
   };
 }
+
+export function getSoSoValueEnvironment() {
+  return {
+    apiKey: readEnv("SOSOVALUE_API_KEY"),
+    etfBaseUrl: readEnv("SOSOVALUE_API_BASE_URL") ?? "https://api.sosovalue.xyz",
+    openApiBaseUrl:
+      readEnv("SOSOVALUE_OPENAPI_BASE_URL") ?? "https://openapi.sosovalue.com",
+    btcCurrencyId:
+      readEnv("SOSOVALUE_BTC_CURRENCY_ID") ?? "1673723677362319866"
+  };
+}

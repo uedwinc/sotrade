@@ -13,6 +13,13 @@ This repository is intentionally scaffolded for step-by-step delivery. The first
 - Detailed setup and secrets guidance
 - Product architecture docs for the next implementation slices
 
+Milestone 2 adds:
+
+- Server-side SoSoValue ingestion for ETF flow and featured news feeds
+- Normalized signal bundle generation for the app
+- A live `/api/signals` endpoint for Codespaces verification
+- Overview UI panels that surface the current signal snapshot
+
 ## Core principles
 
 - Testnet only. No mainnet execution is allowed in this codebase at this stage.
@@ -25,6 +32,7 @@ This repository is intentionally scaffolded for step-by-step delivery. The first
 - `/copilot` AI trade thesis workspace
 - `/rules` No-code signal rules engine
 - `/journal` Execution journal and operational timeline
+- `/api/signals` Normalized live SoSoValue signal snapshot
 
 ## Local setup
 
