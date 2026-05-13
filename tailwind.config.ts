@@ -9,18 +9,18 @@ const config: Config = {
   theme: {
     extend: {
       colors: {
-        paper: "#f5f1e8",
-        canvas: "#f0ebdf",
-        ink: "#152238",
-        slate: "#55657d",
-        line: "#d8d0c4",
+        paper: "#efe8da",
+        canvas: "#e7dece",
+        ink: "#0f1b2d",
+        slate: "#394860",
+        line: "#cfc2ac",
         signal: "#1d6a67",
         ember: "#a45c35",
         tide: "#2f5ea8",
-        cloud: "#fcfaf5"
+        cloud: "#f8f4eb"
       },
       boxShadow: {
-        card: "0 10px 30px rgba(21, 34, 56, 0.05)"
+        card: "0 8px 24px rgba(15, 27, 45, 0.045)"
       },
       backgroundImage: {
         grid:

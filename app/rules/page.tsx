@@ -54,18 +54,18 @@ export default function RulesPage() {
                 </div>
                 <div className="mt-4 grid gap-4 sm:grid-cols-2">
                   <div className="rounded-2xl border border-line bg-paper p-4">
-                    <div className="flex items-center gap-2 text-sm font-medium text-ink">
+                    <div className="flex items-center gap-2 text-[1rem] font-medium text-ink">
                       <Cpu className="h-4 w-4 text-tide" />
                       Trigger
                     </div>
-                    <p className="mt-3 text-sm leading-7 text-slate">{rule.trigger}</p>
+                    <p className="mt-3 text-[1rem] leading-7 text-ink/76">{rule.trigger}</p>
                   </div>
                   <div className="rounded-2xl border border-line bg-paper p-4">
-                    <div className="flex items-center gap-2 text-sm font-medium text-ink">
+                    <div className="flex items-center gap-2 text-[1rem] font-medium text-ink">
                       <PlayCircle className="h-4 w-4 text-ember" />
                       Action
                     </div>
-                    <p className="mt-3 text-sm leading-7 text-slate">{rule.action}</p>
+                    <p className="mt-3 text-[1rem] leading-7 text-ink/76">{rule.action}</p>
                   </div>
                 </div>
               </div>

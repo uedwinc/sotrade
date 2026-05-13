@@ -19,7 +19,7 @@ export default function JournalPage() {
 
       <div className="grid gap-5 lg:grid-cols-[0.34fr_0.66fr]">
         <Panel>
-          <p className="text-xs font-semibold uppercase tracking-[0.24em] text-slate">
+          <p className="text-xs font-semibold uppercase tracking-[0.16em] text-slate">
             Journal principles
           </p>
           <div className="mt-5 space-y-4">
@@ -28,7 +28,10 @@ export default function JournalPage() {
               "Every rule trigger should show the exact condition state that fired it.",
               "Every execution event should preserve operator context and timestamps."
             ].map((item) => (
-              <div key={item} className="border-b border-line pb-4 text-sm leading-7 text-slate last:border-b-0 last:pb-0">
+              <div
+                key={item}
+                className="border-b border-line pb-4 text-[1rem] leading-7 text-ink/76 last:border-b-0 last:pb-0"
+              >
                 {item}
               </div>
             ))}
@@ -47,7 +50,7 @@ export default function JournalPage() {
                   {event.title}
                 </h3>
               </div>
-              <p className="mt-3 text-sm leading-7 text-slate">{event.detail}</p>
+              <p className="mt-3 text-[1rem] leading-7 text-ink/76">{event.detail}</p>
             </div>
           </Panel>
         ))}

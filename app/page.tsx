@@ -31,17 +31,17 @@ export default function HomePage() {
               Review Rule Engine
             </a>
           </div>
-          <div className="mt-10 grid gap-4 border-t border-line pt-6 sm:grid-cols-3">
+          <div className="mt-9 grid gap-5 border-t border-line pt-6 sm:grid-cols-3">
             {[
               ["Read", "ETF flow, sentiment, sector rotation, and macro context"],
               ["Reason", "Convert signal clusters into an explicit trading thesis"],
               ["Act", "Route approved plans into SoDEX testnet execution"]
             ].map(([label, body]) => (
               <div key={label}>
-                <p className="text-xs font-semibold uppercase tracking-[0.24em] text-slate">
+                <p className="text-xs font-semibold uppercase tracking-[0.16em] text-slate">
                   {label}
                 </p>
-                <p className="mt-3 text-sm leading-7 text-slate">{body}</p>
+                <p className="mt-2 text-[1.02rem] leading-7 text-ink/76">{body}</p>
               </div>
             ))}
           </div>
@@ -54,19 +54,19 @@ export default function HomePage() {
             <h3 className="mt-4 text-2xl font-semibold tracking-[-0.03em] text-ink">
               Testnet locked by design
             </h3>
-            <p className="mt-3 text-sm leading-7 text-slate">
+            <p className="mt-3 max-w-md text-[1.02rem] leading-8 text-ink/78">
               The product is intentionally opinionated here: no paper mode, no
               mainnet switch, and no endpoint ambiguity while we validate the
               execution loop.
             </p>
           </div>
-          <div className="mt-8 space-y-3 border-t border-line pt-6">
+          <div className="mt-8 space-y-4 border-t border-line pt-6">
             {[
               "Every configured SoDEX URL is checked for testnet scope.",
               "The signer is expected to be a dedicated testnet API wallet.",
               "Journaling is treated as a first-class product surface."
             ].map((item) => (
-              <div key={item} className="flex items-start gap-3 text-sm leading-7 text-slate">
+              <div key={item} className="flex items-start gap-3 text-[1rem] leading-7 text-ink/76">
                 <ShieldCheck className="mt-1 h-4 w-4 text-signal" />
                 <span>{item}</span>
               </div>
@@ -78,13 +78,13 @@ export default function HomePage() {
       <section className="grid gap-4 md:grid-cols-3">
         {overviewMetrics.map((metric) => (
           <Panel key={metric.label}>
-            <p className="text-xs font-semibold uppercase tracking-[0.24em] text-slate">
+            <p className="text-xs font-semibold uppercase tracking-[0.16em] text-slate">
               {metric.label}
             </p>
             <h3 className="mt-4 text-2xl font-semibold tracking-[-0.03em] text-ink">
               {metric.value}
             </h3>
-            <p className="mt-3 text-sm leading-7 text-slate">{metric.detail}</p>
+            <p className="mt-3 text-[1rem] leading-7 text-ink/76">{metric.detail}</p>
           </Panel>
         ))}
       </section>
@@ -116,10 +116,10 @@ export default function HomePage() {
                 key={item.title}
                 className="rounded-[20px] border border-line bg-paper p-5"
               >
-                <p className="text-xs font-semibold uppercase tracking-[0.24em] text-slate">
+                <p className="text-xs font-semibold uppercase tracking-[0.16em] text-slate">
                   {item.title}
                 </p>
-                <p className="mt-4 text-sm leading-7 text-slate">{item.body}</p>
+                <p className="mt-3 text-[1rem] leading-7 text-ink/76">{item.body}</p>
               </div>
             ))}
           </div>
@@ -129,7 +129,7 @@ export default function HomePage() {
                 "Trade plans should explain not just direction, but timing and invalidation.",
                 "Execution should feel reviewable enough for a serious product demo."
               ].map((item) => (
-                <div key={item} className="flex items-start gap-2 text-sm leading-7 text-slate">
+                <div key={item} className="flex items-start gap-2 text-[1rem] leading-7 text-ink/76">
                   <Dot className="mt-1 h-5 w-5 text-ember" />
                   <span>{item}</span>
                 </div>
@@ -144,7 +144,7 @@ export default function HomePage() {
               Rule trigger model
             </h3>
           </div>
-          <p className="mt-4 text-sm leading-7 text-slate">
+          <p className="mt-4 text-[1.02rem] leading-8 text-ink/78">
             Users define human-readable conditions and execution actions. The app
             evaluates live signals, detects qualified setups, and dispatches testnet
             orders once all conditions align.
@@ -156,10 +156,10 @@ export default function HomePage() {
               ["Outcome", "A deterministic execution event with a persistent journal trail"]
             ].map(([label, body]) => (
               <div key={label} className="grid gap-2 sm:grid-cols-[132px_1fr]">
-                <p className="text-xs font-semibold uppercase tracking-[0.22em] text-slate">
+                <p className="text-xs font-semibold uppercase tracking-[0.15em] text-slate">
                   {label}
                 </p>
-                <p className="text-sm leading-7 text-slate">{body}</p>
+                <p className="text-[1rem] leading-7 text-ink/76">{body}</p>
               </div>
             ))}
           </div>

@@ -24,10 +24,10 @@ export function AppShell({ children }: { children: ReactNode }) {
         <div className="flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
           <div className="max-w-2xl">
             <div className="flex flex-wrap items-center gap-3">
-              <p className="text-xs font-semibold uppercase tracking-[0.32em] text-slate">
+              <p className="text-xs font-semibold uppercase tracking-[0.22em] text-slate">
                 SoSoValue x SoDEX
               </p>
-              <span className="rounded-full border border-signal/20 bg-signal/8 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.2em] text-signal">
+              <span className="rounded-full border border-signal/20 bg-signal/10 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.14em] text-signal">
                 Testnet only
               </span>
             </div>
@@ -36,7 +36,7 @@ export function AppShell({ children }: { children: ReactNode }) {
                 <h1 className="text-3xl font-semibold tracking-[-0.04em] text-ink sm:text-4xl">
                   SoTrade
                 </h1>
-                <p className="mt-2 max-w-xl text-sm leading-7 text-slate">
+                <p className="mt-3 max-w-2xl text-[1.05rem] leading-8 text-ink/78">
                   Research-driven crypto execution with an AI copilot and a
                   rules engine built for operator confidence.
                 </p>
@@ -58,7 +58,7 @@ export function AppShell({ children }: { children: ReactNode }) {
                   "inline-flex items-center gap-2 rounded-full border px-4 py-2 text-sm transition",
                   active
                     ? "border-ink bg-ink text-cloud"
-                    : "border-line bg-paper text-slate hover:border-ink/25 hover:text-ink"
+                    : "border-line bg-paper text-ink/72 hover:border-ink/25 hover:text-ink"
                 )}
               >
                 <Icon className="h-4 w-4" />

@@ -12,8 +12,12 @@ html {
 
 body {
   font-family: var(--font-body), sans-serif;
-  background: #f5f1e8;
-  color: #152238;
+  background: #efe8da;
+  color: #0f1b2d;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
+  line-height: 1.55;
 }
 
 h1,
@@ -39,7 +43,7 @@ body::before {
     linear-gradient(to bottom, rgba(21, 34, 56, 0.04) 1px, transparent 1px);
   background-size: 32px 32px;
   pointer-events: none;
-  opacity: 0.35;
+  opacity: 0.16;
 }
 
 .balance-text {
