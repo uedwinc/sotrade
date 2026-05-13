@@ -130,7 +130,7 @@ export default async function HomePage() {
         <Panel>
           <div className="flex flex-col gap-4 border-b border-line pb-5 sm:flex-row sm:items-end sm:justify-between">
             <div>
-              <Pill>Milestone 2 · Live ingestion</Pill>
+              <Pill>Milestone 2 / Live ingestion</Pill>
               <h3 className="mt-4 text-2xl font-semibold tracking-[-0.03em] text-ink">
                 SoSoValue signal snapshot
               </h3>

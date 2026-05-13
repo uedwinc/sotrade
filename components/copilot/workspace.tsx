@@ -18,6 +18,9 @@ import { SectionTitle } from "@/components/section-title";
 import type {
   CopilotErrorResponse,
   CopilotResponse,
+  ExecutionErrorResponse,
+  ExecutionPreviewResponse,
+  ExecutionSubmitResponse,
   PriceAnchor,
   SignalSnapshot
 } from "@/lib/domain";
@@ -103,16 +106,43 @@ export function CopilotWorkspace({
   const [maxRiskPct, setMaxRiskPct] = useState("1");
   const [result, setResult] = useState<CopilotResponse | null>(null);
   const [error, setError] = useState<CopilotErrorResponse | null>(null);
+  const [executionPreview, setExecutionPreview] = useState<ExecutionPreviewResponse | null>(null);
+  const [executionSubmit, setExecutionSubmit] = useState<ExecutionSubmitResponse | null>(null);
+  const [executionError, setExecutionError] = useState<ExecutionErrorResponse | null>(null);
   const [isPending, startTransition] = useTransition();
+  const [isExecutionPending, startExecutionTransition] = useTransition();
 
   const activeSnapshot = result?.signalSnapshot ?? initialSignalSnapshot;
   const activePriceAnchor = result?.priceAnchor ?? initialPriceAnchor;
   const activeModelId = result?.model.modelId ?? "anthropic.claude-sonnet-4-6";
 
+  function buildExecutionRequest() {
+    if (
+      !result ||
+      !result.tradePlan.actionable ||
+      result.tradePlan.entryPriceUsd === null ||
+      result.tradePlan.stopLossUsd === null ||
+      result.sizing.positionSizeBtc === null
+    ) {
+      return null;
+    }
+
+    return {
+      asset: "BTC" as const,
+      thesisBias: result.thesis.bias,
+      entryPriceUsd: result.tradePlan.entryPriceUsd,
+      stopLossUsd: result.tradePlan.stopLossUsd,
+      takeProfitUsd: result.tradePlan.takeProfitUsd,
+      positionSizeBtc: result.sizing.positionSizeBtc,
+      copilotGeneratedAt: result.generatedAt,
+      copilotRunId: result.persistence.id
+    };
+  }
+
   return (
     <div className="space-y-8">
       <Panel>
-        <Pill>AI Copilot · Milestone 3</Pill>
+        <Pill>AI Copilot / Milestone 4</Pill>
         <SectionTitle
           eyebrow="Structured BTC workspace"
           title="A simpler Copilot flow: inputs on the left, one decision canvas on the right."
@@ -158,10 +188,16 @@ export function CopilotWorkspace({
                       if (!response.ok) {
                         setResult(null);
                         setError(body as CopilotErrorResponse);
+                        setExecutionPreview(null);
+                        setExecutionSubmit(null);
+                        setExecutionError(null);
                         return;
                       }
 
                       setResult(body as CopilotResponse);
+                      setExecutionPreview(null);
+                      setExecutionSubmit(null);
+                      setExecutionError(null);
                     } catch (requestError) {
                       setResult(null);
                       setError({
@@ -220,7 +256,7 @@ export function CopilotWorkspace({
                   <p className="text-xs font-semibold uppercase tracking-[0.14em] text-slate">
                     Horizon
                   </p>
-                  <p className="mt-2 text-[1rem] font-medium text-ink">Swing · 1-7 days</p>
+                  <p className="mt-2 text-[1rem] font-medium text-ink">Swing / 1-7 days</p>
                 </div>
               </div>
 
@@ -248,7 +284,7 @@ export function CopilotWorkspace({
                 </p>
                 <p className="mt-2 text-sm leading-6 text-ink/72">
                   {activePriceAnchor
-                    ? `Coinbase · ${formatObservedAt(activePriceAnchor.observedAt)}`
+                    ? `Coinbase / ${formatObservedAt(activePriceAnchor.observedAt)}`
                     : initialPriceError ?? "Live BTC spot price is not available yet."}
                 </p>
               </div>
@@ -365,7 +401,7 @@ export function CopilotWorkspace({
                     [
                       "Take profit",
                       result.tradePlan.takeProfitUsd.length > 0
-                        ? result.tradePlan.takeProfitUsd.map((value) => formatUsd(value)).join(" · ")
+                        ? result.tradePlan.takeProfitUsd.map((value) => formatUsd(value)).join(" / ")
                         : "Not set"
                     ],
                     [
@@ -477,6 +513,296 @@ export function CopilotWorkspace({
                     </div>
                   </div>
                 </Disclosure>
+
+                {result.tradePlan.actionable ? (
+                  <Disclosure
+                    title="SoDEX testnet execution"
+                    meta="Preview the live bracket order packet, then submit to testnet when ready"
+                    defaultOpen
+                  >
+                    <div className="space-y-5">
+                      <div className="flex flex-wrap gap-3">
+                        <button
+                          type="button"
+                          disabled={isExecutionPending}
+                          onClick={() => {
+                            const requestPayload = buildExecutionRequest();
+
+                            if (!requestPayload) {
+                              return;
+                            }
+
+                            startExecutionTransition(() => {
+                              void (async () => {
+                                try {
+                                  setExecutionError(null);
+                                  setExecutionSubmit(null);
+
+                                  const response = await fetch("/api/execution/preview", {
+                                    method: "POST",
+                                    headers: {
+                                      "content-type": "application/json"
+                                    },
+                                    body: JSON.stringify(requestPayload)
+                                  });
+                                  const body = (await response.json()) as
+                                    | ExecutionPreviewResponse
+                                    | ExecutionErrorResponse;
+
+                                  if (!response.ok) {
+                                    setExecutionPreview(null);
+                                    setExecutionError(body as ExecutionErrorResponse);
+                                    return;
+                                  }
+
+                                  setExecutionPreview(body as ExecutionPreviewResponse);
+                                } catch (previewError) {
+                                  setExecutionPreview(null);
+                                  setExecutionError({
+                                    error: {
+                                      code: "EXECUTION_PREVIEW_FAILED",
+                                      message: "The browser could not build a SoDEX execution preview.",
+                                      retryable: true,
+                                      details: [
+                                        previewError instanceof Error
+                                          ? previewError.message
+                                          : "Unknown execution preview error"
+                                      ]
+                                    }
+                                  });
+                                }
+                              })();
+                            });
+                          }}
+                          className="inline-flex items-center justify-center rounded-full border border-line bg-paper px-5 py-3 text-sm font-medium text-ink transition hover:border-ink/25 disabled:cursor-not-allowed disabled:opacity-60"
+                        >
+                          {isExecutionPending && !executionSubmit
+                            ? "Preparing preview..."
+                            : "Preview SoDEX order packet"}
+                        </button>
+
+                        <button
+                          type="button"
+                          disabled={isExecutionPending}
+                          onClick={() => {
+                            const requestPayload = buildExecutionRequest();
+
+                            if (!requestPayload) {
+                              return;
+                            }
+
+                            startExecutionTransition(() => {
+                              void (async () => {
+                                try {
+                                  setExecutionError(null);
+
+                                  const response = await fetch("/api/execution/submit", {
+                                    method: "POST",
+                                    headers: {
+                                      "content-type": "application/json"
+                                    },
+                                    body: JSON.stringify(requestPayload)
+                                  });
+                                  const body = (await response.json()) as
+                                    | ExecutionSubmitResponse
+                                    | ExecutionErrorResponse;
+
+                                  if (!response.ok) {
+                                    setExecutionSubmit(null);
+                                    setExecutionError(body as ExecutionErrorResponse);
+                                    return;
+                                  }
+
+                                  setExecutionSubmit(body as ExecutionSubmitResponse);
+                                  setExecutionPreview(body as ExecutionPreviewResponse);
+                                } catch (submitError) {
+                                  setExecutionSubmit(null);
+                                  setExecutionError({
+                                    error: {
+                                      code: "EXECUTION_SUBMIT_FAILED",
+                                      message: "The browser could not submit the SoDEX execution request.",
+                                      retryable: true,
+                                      details: [
+                                        submitError instanceof Error
+                                          ? submitError.message
+                                          : "Unknown execution submit error"
+                                      ]
+                                    }
+                                  });
+                                }
+                              })();
+                            });
+                          }}
+                          className="inline-flex items-center justify-center rounded-full bg-ink px-5 py-3 text-sm font-medium text-cloud transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-60"
+                        >
+                          {isExecutionPending && executionSubmit === null
+                            ? "Submitting..."
+                            : "Execute on SoDEX testnet"}
+                        </button>
+                      </div>
+
+                      <div className="rounded-[20px] border border-line bg-paper p-4 text-[0.98rem] leading-7 text-ink/76">
+                        This execution path uses a SoDEX testnet perps bracket order on `BTC-USD` with one attached take-profit and one attached stop-loss. The current live packet uses the first take-profit level from the Copilot plan.
+                      </div>
+
+                      {executionError ? (
+                        <div className="rounded-[20px] border border-ember/20 bg-amber-50 p-4">
+                          <p className="text-[1rem] font-medium text-ember">
+                            {executionError.error.message}
+                          </p>
+                          <div className="mt-3 grid gap-2">
+                            {(executionError.error.details ?? []).map((item) => (
+                              <div key={item} className="text-[0.98rem] leading-7 text-ember">
+                                {item}
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      ) : null}
+
+                      {executionPreview ? (
+                        <div className="grid gap-4">
+                          <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+                            {[
+                              ["Environment", executionPreview.environment],
+                              ["Symbol", executionPreview.symbol.name],
+                              ["Account ID", String(executionPreview.account.accountId)],
+                              ["API wallet", executionPreview.account.apiWalletAddress]
+                            ].map(([label, value]) => (
+                              <div key={label} className="rounded-[20px] border border-line bg-cloud p-4">
+                                <p className="text-xs font-semibold uppercase tracking-[0.14em] text-slate">
+                                  {label}
+                                </p>
+                                <p className="mt-3 break-all text-[1rem] font-medium leading-7 text-ink">
+                                  {value}
+                                </p>
+                              </div>
+                            ))}
+                          </div>
+
+                          <Disclosure
+                            title="Order preview"
+                            meta={`${executionPreview.orders.length} orders in the bracket packet`}
+                            defaultOpen
+                          >
+                            <div className="grid gap-3">
+                              {executionPreview.orders.map((order) => (
+                                <div key={order.clOrdID} className="rounded-[18px] border border-line bg-cloud p-4">
+                                  <div className="flex flex-wrap items-center justify-between gap-3">
+                                    <div>
+                                      <p className="text-[1rem] font-medium text-ink">
+                                        {order.role.replaceAll("_", " ")}
+                                      </p>
+                                      <p className="mt-1 text-sm text-ink/72">{order.clOrdID}</p>
+                                    </div>
+                                    <div className="rounded-full border border-line bg-paper px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.12em] text-slate">
+                                      {order.side} / {order.type}
+                                    </div>
+                                  </div>
+                                  <div className="mt-3 grid gap-3 sm:grid-cols-4">
+                                    {[
+                                      ["Time in force", order.timeInForce],
+                                      ["Price", order.price ?? "Market"],
+                                      ["Stop price", order.stopPrice ?? "None"],
+                                      ["Quantity", order.quantity ?? "None"]
+                                    ].map(([label, value]) => (
+                                      <div key={label}>
+                                        <p className="text-xs font-semibold uppercase tracking-[0.12em] text-slate">
+                                          {label}
+                                        </p>
+                                        <p className="mt-2 text-[0.98rem] text-ink/76">{value}</p>
+                                      </div>
+                                    ))}
+                                  </div>
+                                </div>
+                              ))}
+                            </div>
+                          </Disclosure>
+
+                          {executionPreview.adjustments.length > 0 ? (
+                            <Disclosure
+                              title="Normalization adjustments"
+                              meta={`${executionPreview.adjustments.length} adjustments applied`}
+                            >
+                              <div className="grid gap-2 text-[0.98rem] leading-7 text-ink/76">
+                                {executionPreview.adjustments.map((item) => (
+                                  <div key={item}>{item}</div>
+                                ))}
+                              </div>
+                            </Disclosure>
+                          ) : null}
+
+                          <Disclosure
+                            title="Warnings"
+                            meta={`${executionPreview.warnings.length} live execution notes`}
+                          >
+                            <div className="grid gap-2 text-[0.98rem] leading-7 text-ink/76">
+                              {executionPreview.warnings.map((item) => (
+                                <div key={item}>{item}</div>
+                              ))}
+                            </div>
+                          </Disclosure>
+                        </div>
+                      ) : null}
+
+                      {executionSubmit ? (
+                        <Disclosure
+                          title="Submission result"
+                          meta={`Nonce ${executionSubmit.nonce}`}
+                          defaultOpen
+                        >
+                          <div className="grid gap-4">
+                            <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+                              {[
+                                ["Gateway code", String(executionSubmit.response.code)],
+                                ["Submitted", formatObservedAt(executionSubmit.submittedAt)],
+                                ["Persistence", executionSubmit.persistence.status],
+                                ["Request type", executionSubmit.requestType]
+                              ].map(([label, value]) => (
+                                <div key={label} className="rounded-[20px] border border-line bg-cloud p-4">
+                                  <p className="text-xs font-semibold uppercase tracking-[0.14em] text-slate">
+                                    {label}
+                                  </p>
+                                  <p className="mt-3 text-[1rem] font-medium leading-7 text-ink">
+                                    {value}
+                                  </p>
+                                </div>
+                              ))}
+                            </div>
+                            {executionSubmit.response.error ? (
+                              <div className="rounded-[20px] border border-ember/20 bg-amber-50 p-4 text-[0.98rem] leading-7 text-ember">
+                                {executionSubmit.response.error}
+                              </div>
+                            ) : null}
+                            {executionSubmit.persistence.reason ? (
+                              <div className="rounded-[20px] border border-line bg-paper p-4 text-[0.98rem] leading-7 text-ink/76">
+                                {executionSubmit.persistence.reason}
+                              </div>
+                            ) : null}
+                            {executionSubmit.response.data?.length ? (
+                              <div className="grid gap-3">
+                                {executionSubmit.response.data.map((item) => (
+                                  <div key={item.clOrdID} className="rounded-[18px] border border-line bg-cloud p-4">
+                                    <div className="flex flex-wrap items-center justify-between gap-3">
+                                      <p className="text-[1rem] font-medium text-ink">{item.clOrdID}</p>
+                                      <span className="rounded-full border border-line bg-paper px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.12em] text-slate">
+                                        Code {item.code}
+                                      </span>
+                                    </div>
+                                    <div className="mt-3 grid gap-2 text-[0.98rem] leading-7 text-ink/76">
+                                      {item.orderID ? <div>Order ID: {item.orderID}</div> : null}
+                                      {item.error ? <div>Error: {item.error}</div> : null}
+                                    </div>
+                                  </div>
+                                ))}
+                              </div>
+                            ) : null}
+                          </div>
+                        </Disclosure>
+                      ) : null}
+                    </div>
+                  </Disclosure>
+                ) : null}
 
                 <Disclosure
                   title="Underlying signal context"

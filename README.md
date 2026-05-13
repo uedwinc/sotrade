@@ -27,6 +27,13 @@ Milestone 3 adds:
 - Coinbase BTC price anchoring for entry / TP / SL proposals
 - Optional Postgres persistence for generated Copilot plans
 
+Milestone 4 adds:
+
+- SoDEX testnet execution preview from the Copilot workspace
+- `POST /api/execution/preview` for bracket-packet normalization and validation
+- `POST /api/execution/submit` for signed SoDEX testnet perps order submission
+- Optional Postgres persistence for execution submissions
+
 ## Core principles
 
 - Testnet only. No mainnet execution is allowed in this codebase at this stage.
@@ -41,6 +48,8 @@ Milestone 3 adds:
 - `/journal` Execution journal and operational timeline
 - `/api/signals` Normalized live SoSoValue signal snapshot
 - `/api/copilot/thesis` Bedrock-powered BTC thesis and trade-plan generation
+- `/api/execution/preview` SoDEX testnet execution packet preview
+- `/api/execution/submit` SoDEX testnet execution submission
 
 ## Local setup
 

@@ -114,8 +114,9 @@ Responsibilities:
 ### Milestone 4
 
 - SoDEX signing service
-- Testnet order placement
-- Execution confirmations
+- Copilot-driven testnet order preview and submission
+- Bracket packet normalization against SoDEX symbol filters
+- Execution confirmations and optional persistence
 
 ### Milestone 5
 

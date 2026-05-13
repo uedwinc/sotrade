@@ -53,6 +53,7 @@ What you need:
 
 - A SoDEX testnet account
 - Your SoDEX `accountID`
+- Your SoDEX API key name if it is distinct from the signer address
 - An API wallet address for signing
 - The corresponding private key for that API wallet
 
@@ -78,9 +79,26 @@ SODEX_PERPS_REST_URL=https://testnet-gw.sodex.dev/api/v1/perps
 SODEX_SPOT_WS_URL=wss://testnet-gw.sodex.dev/ws/spot
 SODEX_PERPS_WS_URL=wss://testnet-gw.sodex.dev/ws/perps
 SODEX_ACCOUNT_ID=your_account_id_here
+SODEX_API_KEY_NAME=your_registered_api_key_name_if_needed
 SODEX_API_WALLET_ADDRESS=0xyourtestnetsigner
 SODEX_PRIVATE_KEY=your_private_key_here
 ```
+
+How to get the SoDEX account ID when the UI does not show it clearly:
+
+1. In Codespaces, run `npx wscat -c wss://testnet-gw.sodex.dev/ws/spot`
+2. Send:
+
+```json
+{"op":"subscribe","params":{"channel":"accountState","user":"0xYOUR_WALLET_ADDRESS"}}
+```
+
+3. Look for the `accountID` value in the subscribe response.
+
+Note:
+
+- In many setups, `SODEX_API_KEY_NAME` can be left blank and SoTrade will fall back to `SODEX_API_WALLET_ADDRESS`.
+- If SoDEX assigned a distinct API key name, set it explicitly in `.env.local`.
 
 ## 3. Database URL
 
@@ -108,6 +126,10 @@ Purpose:
 - Session signing
 - Secure server-side authentication flows later in the project
 
+Current milestone note:
+
+- This value is future-facing and can stay blank for now because auth is not yet active in the product flow.
+
 Where to place it:
 
 ```env
@@ -116,7 +138,8 @@ NEXTAUTH_SECRET=generate_a_long_random_secret
 
 Recommended way to generate it in Codespaces later:
 
-- Use a long random string of at least 32 characters
+- `pnpm exec auth secret`
+- or `openssl rand -base64 33`
 
 ## 5. Amazon Bedrock configuration
 

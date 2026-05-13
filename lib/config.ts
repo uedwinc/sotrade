@@ -34,7 +34,11 @@ export function getTradingEnvironment() {
     spotRestUrl: readEnv("SODEX_SPOT_REST_URL"),
     perpsRestUrl: readEnv("SODEX_PERPS_REST_URL"),
     spotWsUrl: readEnv("SODEX_SPOT_WS_URL"),
-    perpsWsUrl: readEnv("SODEX_PERPS_WS_URL")
+    perpsWsUrl: readEnv("SODEX_PERPS_WS_URL"),
+    accountId: readEnv("SODEX_ACCOUNT_ID"),
+    apiKeyName: readEnv("SODEX_API_KEY_NAME"),
+    apiWalletAddress: readEnv("SODEX_API_WALLET_ADDRESS"),
+    privateKey: readEnv("SODEX_PRIVATE_KEY")
   };
 }
 

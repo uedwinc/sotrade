@@ -1,6 +1,6 @@
 # SoTrade Setup Guide For GitHub Codespaces
 
-This guide is intentionally detailed. Follow it in order and you will have a clean, secure setup for the first working milestone.
+This guide is intentionally detailed. Follow it in order and you will have a clean, secure setup for the current SoTrade milestone stack.
 
 ## 1. Push this repository to GitHub
 
@@ -54,12 +54,17 @@ At the start, focus on:
 - `AWS_REGION`
 - `BEDROCK_MODEL_ID`
 - `SODEX_ACCOUNT_ID`
+- `SODEX_API_KEY_NAME` if SoDEX assigned a distinct API key name
 - `SODEX_API_WALLET_ADDRESS`
 - `SODEX_PRIVATE_KEY`
-- `DATABASE_URL`
-- `NEXTAUTH_SECRET`
+- `DATABASE_URL` if you want Copilot and execution persistence
 
-If you do not yet have the final database provider chosen, keep `DATABASE_URL` empty for now. The UI shell will still be usable.
+Values you can safely leave blank for now:
+
+- `DATABASE_URL` if you do not want persistence yet
+- `NEXTAUTH_SECRET` because authentication is not wired in this milestone
+
+If you do not yet have the final database provider chosen, keep `DATABASE_URL` empty for now. Copilot generation and SoDEX testnet execution preview will still work.
 
 For Milestone 3, Bedrock credentials can be provided in either of these ways:
 
@@ -127,16 +132,35 @@ If Copilot generation fails:
 - Recheck that your AWS credentials in Codespaces can access Amazon Bedrock runtime
 - Recheck that the chosen model is enabled for your account and region
 
-## 10. What comes next after milestone 3 passes
+## 10. What to test in milestone 4
 
-Once the shell is running correctly, the next implementation slice should be:
+After Copilot generation is healthy and your SoDEX testnet credentials are configured, verify:
 
-1. SoDEX testnet signing service
-2. Order preview and submission flow
-3. Execution confirmations
-4. Journal persistence and operator review surfaces
+- The `/copilot` page exposes the SoDEX execution section once a plan is actionable
+- `POST /api/execution/preview` returns a normalized testnet order packet preview
+- Preview shows entry, take-profit, stop-loss, account, and symbol details
+- `POST /api/execution/submit` returns a signed SoDEX testnet submission result
+- If `DATABASE_URL` is configured and reachable, execution persistence returns `saved`
+- If `DATABASE_URL` is empty, execution still works and persistence returns `skipped`
 
-## 11. Safety checklist
+If execution preview or submission fails:
+
+- Recheck `SODEX_ACCOUNT_ID`
+- Recheck `SODEX_API_KEY_NAME` if your SoDEX API key name differs from the signer address
+- Recheck `SODEX_API_WALLET_ADDRESS`
+- Recheck `SODEX_PRIVATE_KEY`
+- Recheck that every configured SoDEX endpoint still points to `testnet-gw.sodex.dev`
+
+## 11. What comes next after milestone 4 passes
+
+The next implementation slice should be:
+
+1. Rules engine persistence
+2. Rule evaluation and scheduling
+3. Auto-triggered testnet trades
+4. Journal review and operator controls
+
+## 12. Safety checklist
 
 Before every push:
 

@@ -123,3 +123,76 @@ export interface CopilotErrorResponse {
   };
   model: CopilotModelInfo;
 }
+
+export interface ExecutionPlanRequest {
+  asset: "BTC";
+  thesisBias: MarketBias;
+  entryPriceUsd: number;
+  stopLossUsd: number;
+  takeProfitUsd: number[];
+  positionSizeBtc: number;
+  copilotGeneratedAt?: string;
+  copilotRunId?: string;
+}
+
+export interface ExecutionPreviewOrder {
+  clOrdID: string;
+  role: "entry" | "take_profit" | "stop_loss";
+  side: "BUY" | "SELL";
+  type: "LIMIT" | "MARKET";
+  timeInForce: "GTC" | "IOC";
+  price?: string;
+  quantity?: string;
+  stopPrice?: string;
+  reduceOnly: boolean;
+}
+
+export interface ExecutionPreviewResponse {
+  environment: "testnet";
+  symbol: {
+    id: number;
+    name: "BTC-USD";
+    tickSize: string;
+    stepSize: string;
+    minQuantity: string;
+    minNotional: string;
+  };
+  account: {
+    accountId: number;
+    apiWalletAddress: string;
+  };
+  adjustments: string[];
+  warnings: string[];
+  orders: ExecutionPreviewOrder[];
+}
+
+export interface ExecutionSubmitResponse extends ExecutionPreviewResponse {
+  submittedAt: string;
+  nonce: string;
+  requestType: "newOrder";
+  response: {
+    code: number;
+    error?: string;
+    timestamp?: number;
+    data?: Array<{
+      code: number;
+      clOrdID: string;
+      error?: string;
+      orderID?: number;
+    }>;
+  };
+  persistence: {
+    status: "saved" | "skipped" | "error";
+    id?: string;
+    reason?: string;
+  };
+}
+
+export interface ExecutionErrorResponse {
+  error: {
+    code: string;
+    message: string;
+    retryable: boolean;
+    details?: string[];
+  };
+}
