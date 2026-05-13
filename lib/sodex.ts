@@ -162,6 +162,10 @@ function formatDecimal(value: number, precision: number) {
   return fixed.replace(/\.?0+$/, "");
 }
 
+function clampPositive(value: number, fallback: number) {
+  return value > 0 ? value : fallback;
+}
+
 function makeClOrdId(role: "entry" | "take_profit" | "stop_loss") {
   const suffix = Math.random().toString(36).slice(2, 8);
   return `sotrade_${role}_${Date.now()}_${suffix}`.slice(0, 36);
@@ -732,6 +736,52 @@ function buildExecutionPreview(
   const entryPriceString = formatDecimal(normalizedEntry, pricePrecision);
   const stopPriceString = formatDecimal(normalizedStop, pricePrecision);
   const takeProfitString = formatDecimal(normalizedTp, pricePrecision);
+  const deviationRatio = Number.isFinite(Number(symbol.marketDeviationRatio))
+    ? Number(symbol.marketDeviationRatio)
+    : 0;
+  const normalizedTpExecutionPrice = request.thesisBias === "long"
+    ? normalizePrice(
+        clampPositive(normalizedTp * (1 - deviationRatio), normalizedTp),
+        tickSize,
+        pricePrecision
+      )
+    : normalizePrice(normalizedTp * (1 + deviationRatio), tickSize, pricePrecision);
+  const normalizedStopExecutionPrice = request.thesisBias === "long"
+    ? normalizePrice(
+        clampPositive(normalizedStop * (1 - deviationRatio), normalizedStop),
+        tickSize,
+        pricePrecision
+      )
+    : normalizePrice(normalizedStop * (1 + deviationRatio), tickSize, pricePrecision);
+  const takeProfitExecutionPriceString = formatDecimal(
+    normalizedTpExecutionPrice,
+    pricePrecision
+  );
+  const stopExecutionPriceString = formatDecimal(
+    normalizedStopExecutionPrice,
+    pricePrecision
+  );
+
+  if (request.thesisBias === "long") {
+    if (normalizedTpExecutionPrice > normalizedTp || normalizedStopExecutionPrice > normalizedStop) {
+      throw new ExecutionServiceError(
+        "INVALID_CHILD_PRICE",
+        400,
+        false,
+        "The long attached TP/SL execution prices could not be normalized beneath their trigger prices."
+      );
+    }
+  } else if (
+    normalizedTpExecutionPrice < normalizedTp ||
+    normalizedStopExecutionPrice < normalizedStop
+  ) {
+    throw new ExecutionServiceError(
+      "INVALID_CHILD_PRICE",
+      400,
+      false,
+      "The short attached TP/SL execution prices could not be normalized above their trigger prices."
+    );
+  }
 
   const entryOrder = {
     clOrdID: makeClOrdId("entry"),
@@ -751,6 +801,7 @@ function buildExecutionPreview(
     side: exitSideCode,
     type: 2,
     timeInForce: 3,
+    price: takeProfitExecutionPriceString,
     quantity: quantityString,
     stopPrice: takeProfitString,
     stopType: 2,
@@ -765,6 +816,7 @@ function buildExecutionPreview(
     side: exitSideCode,
     type: 2,
     timeInForce: 3,
+    price: stopExecutionPriceString,
     quantity: quantityString,
     stopPrice: stopPriceString,
     stopType: 1,
@@ -799,12 +851,14 @@ function buildExecutionPreview(
       buildOrderPreview("take_profit", exitSideCode, 2, 3, {
         clOrdID: takeProfitOrder.clOrdID,
         quantity: quantityString,
+        price: takeProfitExecutionPriceString,
         stopPrice: takeProfitString,
         reduceOnly: true
       }),
       buildOrderPreview("stop_loss", exitSideCode, 2, 3, {
         clOrdID: stopLossOrder.clOrdID,
         quantity: quantityString,
+        price: stopExecutionPriceString,
         stopPrice: stopPriceString,
         reduceOnly: true
       })

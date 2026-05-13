@@ -8,7 +8,8 @@ import {
   ArrowDownRight,
   ArrowRight,
   ArrowUpRight,
-  Bot
+  Bot,
+  LoaderCircle
 } from "lucide-react";
 
 import { Disclosure } from "@/components/ui/disclosure";
@@ -307,7 +308,14 @@ export function CopilotWorkspace({
                 disabled={isPending}
                 className="inline-flex w-full items-center justify-center rounded-full bg-ink px-5 py-3 text-sm font-medium text-cloud transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-60"
               >
-                {isPending ? "Generating..." : "Generate BTC trade plan"}
+                {isPending ? (
+                  <span className="inline-flex items-center gap-2">
+                    <LoaderCircle className="h-4 w-4 animate-spin" />
+                    Generating trade plan...
+                  </span>
+                ) : (
+                  "Generate BTC trade plan"
+                )}
               </button>
             </form>
           </Panel>
@@ -380,6 +388,23 @@ export function CopilotWorkspace({
         </div>
 
         <div className="space-y-6">
+          {isPending ? (
+            <Panel className="border-signal/20 bg-signal/5">
+              <div className="flex items-start gap-3">
+                <LoaderCircle className="mt-1 h-5 w-5 animate-spin text-signal" />
+                <div>
+                  <h3 className="text-xl font-semibold tracking-[-0.02em] text-ink">
+                    Building the trade plan
+                  </h3>
+                  <p className="mt-3 text-[1rem] leading-7 text-ink/76">
+                    SoTrade is reading the latest signal bundle, anchoring BTC spot,
+                    and asking Bedrock for a {activeHorizon.shortLabel.toLowerCase()} decision.
+                  </p>
+                </div>
+              </div>
+            </Panel>
+          ) : null}
+
           {error ? (
             <Panel>
               <div className="flex items-start gap-3">
