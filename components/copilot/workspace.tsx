@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useState } from "react";
+import { flushSync } from "react-dom";
 import {
   Activity,
   AlertCircle,
@@ -104,6 +105,14 @@ function humanizeSource(source: string) {
   return source.replace(/([A-Z])/g, " $1").replace(/^./, (match) => match.toUpperCase());
 }
 
+function waitForNextPaint() {
+  return new Promise<void>((resolve) => {
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => resolve());
+    });
+  });
+}
+
 export function CopilotWorkspace({
   initialSignalSnapshot,
   initialPriceAnchor,
@@ -126,6 +135,25 @@ export function CopilotWorkspace({
   const activePriceAnchor = result?.priceAnchor ?? initialPriceAnchor;
   const activeModelId = result?.model.modelId ?? "anthropic.claude-sonnet-4-6";
   const activeHorizon = getCopilotHorizonOption(result?.horizon ?? selectedHorizon);
+  const activePendingState = isGenerating
+    ? {
+        title: "Building the trade plan",
+        detail:
+          `SoTrade is reading the latest signal bundle, anchoring BTC spot, and asking Bedrock for a ${activeHorizon.shortLabel.toLowerCase()} decision.`
+      }
+    : isSubmittingExecution
+      ? {
+          title: "Submitting the SoDEX testnet packet",
+          detail:
+            "SoTrade is refreshing the packet and sending the signed bracket order to SoDEX testnet."
+        }
+      : isPreviewingExecution
+        ? {
+            title: "Preparing the live SoDEX packet",
+            detail:
+              "SoTrade is normalizing the Copilot plan against live SoDEX symbol and mark-price data."
+          }
+        : null;
 
   function resetDecisionState() {
     setResult(null);
@@ -161,10 +189,13 @@ export function CopilotWorkspace({
 
   async function requestExecutionPreview(requestPayload: ExecutionPlanRequest) {
     try {
-      setIsPreviewingExecution(true);
-      setExecutionError(null);
-      setExecutionSubmit(null);
-      setExecutionPreview(null);
+      flushSync(() => {
+        setIsPreviewingExecution(true);
+        setExecutionError(null);
+        setExecutionSubmit(null);
+        setExecutionPreview(null);
+      });
+      await waitForNextPaint();
 
       const response = await fetch("/api/execution/preview", {
         method: "POST",
@@ -232,11 +263,14 @@ export function CopilotWorkspace({
                 event.preventDefault();
 
                 try {
-                  setIsGenerating(true);
-                  setError(null);
-                  setExecutionPreview(null);
-                  setExecutionSubmit(null);
-                  setExecutionError(null);
+                  flushSync(() => {
+                    setIsGenerating(true);
+                    setError(null);
+                    setExecutionPreview(null);
+                    setExecutionSubmit(null);
+                    setExecutionError(null);
+                  });
+                  await waitForNextPaint();
 
                   const response = await fetch("/api/copilot/thesis", {
                     method: "POST",
@@ -352,7 +386,8 @@ export function CopilotWorkspace({
               <button
                 type="submit"
                 disabled={isGenerating}
-                className="inline-flex w-full items-center justify-center rounded-full bg-ink px-5 py-3 text-sm font-medium text-cloud transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-60"
+                aria-busy={isGenerating}
+                className="inline-flex w-full items-center justify-center rounded-full bg-ink px-5 py-3 text-sm font-medium text-cloud transition hover:opacity-90 disabled:cursor-wait disabled:opacity-60"
               >
                 {isGenerating ? (
                   <span className="inline-flex items-center gap-2">
@@ -434,17 +469,16 @@ export function CopilotWorkspace({
         </div>
 
         <div className="space-y-6">
-          {isGenerating ? (
+          {activePendingState ? (
             <Panel className="border-signal/20 bg-signal/5">
               <div className="flex items-start gap-3">
                 <LoaderCircle className="mt-1 h-5 w-5 animate-spin text-signal" />
                 <div>
                   <h3 className="text-xl font-semibold tracking-[-0.02em] text-ink">
-                    Building the trade plan
+                    {activePendingState.title}
                   </h3>
                   <p className="mt-3 text-[1rem] leading-7 text-ink/76">
-                    SoTrade is reading the latest signal bundle, anchoring BTC spot,
-                    and asking Bedrock for a {activeHorizon.shortLabel.toLowerCase()} decision.
+                    {activePendingState.detail}
                   </p>
                 </div>
               </div>
@@ -649,7 +683,8 @@ export function CopilotWorkspace({
                             }
                             await requestExecutionPreview(requestPayload);
                           }}
-                          className="inline-flex items-center justify-center rounded-full border border-line bg-paper px-5 py-3 text-sm font-medium text-ink transition hover:border-ink/25 disabled:cursor-not-allowed disabled:opacity-60"
+                          aria-busy={isPreviewingExecution}
+                          className="inline-flex items-center justify-center rounded-full border border-line bg-paper px-5 py-3 text-sm font-medium text-ink transition hover:border-ink/25 disabled:cursor-wait disabled:opacity-60"
                         >
                           {isPreviewingExecution ? (
                             <span className="inline-flex items-center gap-2">
@@ -672,9 +707,12 @@ export function CopilotWorkspace({
                             }
 
                             try {
-                              setIsSubmittingExecution(true);
-                              setExecutionError(null);
-                              setExecutionSubmit(null);
+                              flushSync(() => {
+                                setIsSubmittingExecution(true);
+                                setExecutionError(null);
+                                setExecutionSubmit(null);
+                              });
+                              await waitForNextPaint();
 
                               const preview = await requestExecutionPreview(requestPayload);
 
@@ -719,7 +757,8 @@ export function CopilotWorkspace({
                               setIsSubmittingExecution(false);
                             }
                           }}
-                          className="inline-flex items-center justify-center rounded-full bg-ink px-5 py-3 text-sm font-medium text-cloud transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-60"
+                          aria-busy={isSubmittingExecution}
+                          className="inline-flex items-center justify-center rounded-full bg-ink px-5 py-3 text-sm font-medium text-cloud transition hover:opacity-90 disabled:cursor-wait disabled:opacity-60"
                         >
                           {isSubmittingExecution ? (
                             <span className="inline-flex items-center gap-2">
@@ -740,20 +779,16 @@ export function CopilotWorkspace({
                         Exit order direction reflects the action needed to close the position. A short position closes with BUY reduce-only orders, while a long position closes with SELL reduce-only orders.
                       </div>
 
-                      {isPreviewingExecution || isSubmittingExecution ? (
+                      {activePendingState && !isGenerating ? (
                         <div className="rounded-[20px] border border-signal/20 bg-signal/5 p-4">
                           <div className="flex items-start gap-3">
                             <LoaderCircle className="mt-1 h-5 w-5 animate-spin text-signal" />
                             <div>
                               <p className="text-[1rem] font-medium text-ink">
-                                {isSubmittingExecution
-                                  ? "Submitting the SoDEX testnet packet"
-                                  : "Preparing the live SoDEX packet"}
+                                {activePendingState.title}
                               </p>
                               <p className="mt-2 text-[0.98rem] leading-7 text-ink/76">
-                                {isSubmittingExecution
-                                  ? "SoTrade is refreshing the packet and sending the signed bracket order to SoDEX testnet."
-                                  : "SoTrade is normalizing the Copilot plan against live SoDEX symbol and mark-price data."}
+                                {activePendingState.detail}
                               </p>
                             </div>
                           </div>
@@ -1067,6 +1102,27 @@ export function CopilotWorkspace({
           )}
         </div>
       </div>
+
+      {activePendingState ? (
+        <div className="pointer-events-none fixed bottom-5 right-5 z-50 w-[min(420px,calc(100vw-2rem))]">
+          <div className="rounded-[22px] border border-signal/20 bg-ink px-5 py-4 text-cloud shadow-card">
+            <div className="flex items-start gap-3">
+              <LoaderCircle className="mt-0.5 h-5 w-5 shrink-0 animate-spin text-cloud" />
+              <div>
+                <p className="text-sm font-semibold uppercase tracking-[0.12em] text-cloud/72">
+                  Working
+                </p>
+                <p className="mt-1 text-[1rem] font-medium text-cloud">
+                  {activePendingState.title}
+                </p>
+                <p className="mt-2 text-sm leading-6 text-cloud/80">
+                  {activePendingState.detail}
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
+      ) : null}
     </div>
   );
 }
