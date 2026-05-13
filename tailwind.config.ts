@@ -9,19 +9,22 @@ const config: Config = {
   theme: {
     extend: {
       colors: {
-        ink: "#08111f",
-        mist: "#eaf4ff",
-        signal: "#73f0bf",
-        ember: "#ff9b71",
-        tide: "#75a8ff",
-        chrome: "#8ea0b8"
+        paper: "#f5f1e8",
+        canvas: "#f0ebdf",
+        ink: "#152238",
+        slate: "#55657d",
+        line: "#d8d0c4",
+        signal: "#1d6a67",
+        ember: "#a45c35",
+        tide: "#2f5ea8",
+        cloud: "#fcfaf5"
       },
       boxShadow: {
-        glow: "0 20px 80px rgba(117, 168, 255, 0.22)"
+        card: "0 10px 30px rgba(21, 34, 56, 0.05)"
       },
       backgroundImage: {
-        mesh:
-          "radial-gradient(circle at top left, rgba(117,168,255,0.25), transparent 28%), radial-gradient(circle at top right, rgba(115,240,191,0.18), transparent 22%), linear-gradient(180deg, #05101d 0%, #08111f 40%, #0b1526 100%)"
+        grid:
+          "linear-gradient(to right, rgba(21,34,56,0.06) 1px, transparent 1px), linear-gradient(to bottom, rgba(21,34,56,0.06) 1px, transparent 1px)"
       }
     }
   },

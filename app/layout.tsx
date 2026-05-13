@@ -34,8 +34,8 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en">
-      <body className={`${bodyFont.variable} ${displayFont.variable} bg-ink text-white`}>
-        <div className="min-h-screen bg-mesh">
+      <body className={`${bodyFont.variable} ${displayFont.variable} bg-paper text-ink`}>
+        <div className="min-h-screen bg-paper text-ink">
           <AppShell>{children}</AppShell>
         </div>
       </body>

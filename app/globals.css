@@ -3,7 +3,7 @@
 @tailwind utilities;
 
 :root {
-  color-scheme: dark;
+  color-scheme: light;
 }
 
 html {
@@ -12,6 +12,8 @@ html {
 
 body {
   font-family: var(--font-body), sans-serif;
+  background: #f5f1e8;
+  color: #152238;
 }
 
 h1,
@@ -24,6 +26,22 @@ h6 {
 }
 
 ::selection {
-  background: rgba(115, 240, 191, 0.3);
-  color: white;
+  background: rgba(29, 106, 103, 0.18);
+  color: #152238;
+}
+
+body::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  background-image:
+    linear-gradient(to right, rgba(21, 34, 56, 0.04) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(21, 34, 56, 0.04) 1px, transparent 1px);
+  background-size: 32px 32px;
+  pointer-events: none;
+  opacity: 0.35;
+}
+
+.balance-text {
+  text-wrap: balance;
 }

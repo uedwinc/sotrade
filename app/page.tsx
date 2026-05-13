@@ -1,4 +1,4 @@
-import { ArrowRight, ShieldCheck, Sparkles, Zap } from "lucide-react";
+import { ArrowRight, Dot, ShieldCheck, Sparkles, Zap } from "lucide-react";
 
 import { Panel } from "@/components/ui/panel";
 import { Pill } from "@/components/ui/pill";
@@ -8,115 +8,161 @@ import { overviewMetrics } from "@/lib/product";
 export default function HomePage() {
   return (
     <div className="space-y-8">
-      <section className="grid gap-6 lg:grid-cols-[1.3fr_0.7fr]">
-        <Panel className="overflow-hidden p-0">
-          <div className="relative h-full overflow-hidden rounded-[28px]">
-            <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(115,240,191,0.22),transparent_30%),radial-gradient(circle_at_bottom_right,rgba(117,168,255,0.26),transparent_32%)]" />
-            <div className="relative p-8 sm:p-10">
-              <Pill>Milestone 1 · Product Foundation</Pill>
-              <SectionTitle
-                eyebrow="Signal-To-Trade Command Center"
-                title="Research-aware execution for crypto traders who need speed and structure."
-                description="SoTrade reads SoSoValue ETF, sentiment, sector, and macro signals, translates them into precise trade plans, and routes approved actions into SoDEX testnet execution."
-              />
-              <div className="mt-8 flex flex-wrap gap-3">
-                <a
-                  href="/copilot"
-                  className="inline-flex items-center gap-2 rounded-full bg-white px-5 py-3 text-sm font-medium text-ink transition hover:translate-y-[-1px]"
-                >
-                  Open AI Copilot
-                  <ArrowRight className="h-4 w-4" />
-                </a>
-                <a
-                  href="/rules"
-                  className="inline-flex items-center gap-2 rounded-full border border-white/15 bg-white/5 px-5 py-3 text-sm font-medium text-white transition hover:border-white/30"
-                >
-                  Configure Rule Engine
-                </a>
+      <section className="grid gap-6 xl:grid-cols-[1.35fr_0.65fr]">
+        <Panel className="p-8 sm:p-10">
+          <Pill>Milestone 1 · Presentation refresh</Pill>
+          <SectionTitle
+            eyebrow="Signal-to-trade operating system"
+            title="A more disciplined trading interface for research-aware execution."
+            description="SoTrade turns SoSoValue market intelligence into executable SoDEX testnet actions through an operator-grade copilot, a rules engine, and a journal designed for review, not spectacle."
+          />
+          <div className="mt-8 flex flex-wrap gap-3">
+            <a
+              href="/copilot"
+              className="inline-flex items-center gap-2 rounded-full bg-ink px-5 py-3 text-sm font-medium text-cloud transition hover:opacity-90"
+            >
+              Open AI Copilot
+              <ArrowRight className="h-4 w-4" />
+            </a>
+            <a
+              href="/rules"
+              className="inline-flex items-center gap-2 rounded-full border border-line bg-paper px-5 py-3 text-sm font-medium text-ink transition hover:border-ink/25"
+            >
+              Review Rule Engine
+            </a>
+          </div>
+          <div className="mt-10 grid gap-4 border-t border-line pt-6 sm:grid-cols-3">
+            {[
+              ["Read", "ETF flow, sentiment, sector rotation, and macro context"],
+              ["Reason", "Convert signal clusters into an explicit trading thesis"],
+              ["Act", "Route approved plans into SoDEX testnet execution"]
+            ].map(([label, body]) => (
+              <div key={label}>
+                <p className="text-xs font-semibold uppercase tracking-[0.24em] text-slate">
+                  {label}
+                </p>
+                <p className="mt-3 text-sm leading-7 text-slate">{body}</p>
               </div>
-            </div>
+            ))}
           </div>
         </Panel>
         <Panel className="flex flex-col justify-between">
           <div>
-            <Pill className="text-ember">Execution Posture</Pill>
-            <h3 className="mt-4 text-2xl font-semibold">Testnet locked by design</h3>
-            <p className="mt-3 text-sm leading-7 text-mist/72">
-              Every trading pathway in this phase is restricted to SoDEX testnet
-              endpoints. No paper mode. No mainnet fallback. No ambiguous toggles.
+            <Pill className="border-signal/20 bg-signal/10 text-signal">
+              Execution posture
+            </Pill>
+            <h3 className="mt-4 text-2xl font-semibold tracking-[-0.03em] text-ink">
+              Testnet locked by design
+            </h3>
+            <p className="mt-3 text-sm leading-7 text-slate">
+              The product is intentionally opinionated here: no paper mode, no
+              mainnet switch, and no endpoint ambiguity while we validate the
+              execution loop.
             </p>
           </div>
-          <div className="mt-8 grid gap-3">
+          <div className="mt-8 space-y-3 border-t border-line pt-6">
             {[
-              "Guardrail checks for every configured SoDEX URL",
-              "Dedicated testnet signing wallet expected",
-              "Execution journal included from day one"
+              "Every configured SoDEX URL is checked for testnet scope.",
+              "The signer is expected to be a dedicated testnet API wallet.",
+              "Journaling is treated as a first-class product surface."
             ].map((item) => (
-              <div
-                key={item}
-                className="flex items-center gap-3 rounded-2xl border border-white/10 bg-black/15 px-4 py-3 text-sm text-mist/80"
-              >
-                <ShieldCheck className="h-4 w-4 text-signal" />
-                {item}
+              <div key={item} className="flex items-start gap-3 text-sm leading-7 text-slate">
+                <ShieldCheck className="mt-1 h-4 w-4 text-signal" />
+                <span>{item}</span>
               </div>
             ))}
           </div>
         </Panel>
       </section>
 
-      <section className="grid gap-6 md:grid-cols-3">
+      <section className="grid gap-4 md:grid-cols-3">
         {overviewMetrics.map((metric) => (
           <Panel key={metric.label}>
-            <p className="text-sm uppercase tracking-[0.2em] text-mist/52">{metric.label}</p>
-            <h3 className="mt-4 text-2xl font-semibold text-white">{metric.value}</h3>
-            <p className="mt-3 text-sm leading-7 text-mist/72">{metric.detail}</p>
+            <p className="text-xs font-semibold uppercase tracking-[0.24em] text-slate">
+              {metric.label}
+            </p>
+            <h3 className="mt-4 text-2xl font-semibold tracking-[-0.03em] text-ink">
+              {metric.value}
+            </h3>
+            <p className="mt-3 text-sm leading-7 text-slate">{metric.detail}</p>
           </Panel>
         ))}
       </section>
 
-      <section className="grid gap-6 lg:grid-cols-3">
-        <Panel className="lg:col-span-2">
+      <section className="grid gap-6 lg:grid-cols-[1.05fr_0.95fr]">
+        <Panel>
           <div className="flex items-center gap-3">
             <Sparkles className="h-5 w-5 text-signal" />
-            <h3 className="text-xl font-semibold">AI Copilot loop</h3>
+            <h3 className="text-xl font-semibold tracking-[-0.02em] text-ink">
+              AI Copilot loop
+            </h3>
           </div>
           <div className="mt-6 grid gap-4 sm:grid-cols-3">
             {[
               {
                 title: "Read",
-                body: "Aggregates SoSoValue ETF flows, market context, and research signals."
+                body: "Aggregates SoSoValue flow data, research streams, and market context into one operator view."
               },
               {
                 title: "Reason",
-                body: "Builds a thesis with confidence, invalidation, and timing logic."
+                body: "Builds a thesis with confirmation logic, invalidation criteria, and explicit trade structure."
               },
               {
                 title: "Act",
-                body: "Prepares an executable SoDEX testnet order plan and journal entry."
+                body: "Prepares a SoDEX testnet order packet and writes the reasoning path into the journal."
               }
             ].map((item) => (
               <div
                 key={item.title}
-                className="rounded-[24px] border border-white/10 bg-black/15 p-5"
+                className="rounded-[20px] border border-line bg-paper p-5"
               >
-                <p className="text-xs uppercase tracking-[0.3em] text-signal/80">
+                <p className="text-xs font-semibold uppercase tracking-[0.24em] text-slate">
                   {item.title}
                 </p>
-                <p className="mt-4 text-sm leading-7 text-mist/78">{item.body}</p>
+                <p className="mt-4 text-sm leading-7 text-slate">{item.body}</p>
               </div>
             ))}
+          </div>
+          <div className="mt-8 border-t border-line pt-6">
+            <div className="grid gap-3 sm:grid-cols-2">
+              {[
+                "Trade plans should explain not just direction, but timing and invalidation.",
+                "Execution should feel reviewable enough for a serious product demo."
+              ].map((item) => (
+                <div key={item} className="flex items-start gap-2 text-sm leading-7 text-slate">
+                  <Dot className="mt-1 h-5 w-5 text-ember" />
+                  <span>{item}</span>
+                </div>
+              ))}
+            </div>
           </div>
         </Panel>
         <Panel>
           <div className="flex items-center gap-3">
             <Zap className="h-5 w-5 text-ember" />
-            <h3 className="text-xl font-semibold">Rule trigger model</h3>
+            <h3 className="text-xl font-semibold tracking-[-0.02em] text-ink">
+              Rule trigger model
+            </h3>
           </div>
-          <p className="mt-4 text-sm leading-7 text-mist/72">
+          <p className="mt-4 text-sm leading-7 text-slate">
             Users define human-readable conditions and execution actions. The app
             evaluates live signals, detects qualified setups, and dispatches testnet
             orders once all conditions align.
           </p>
+          <div className="mt-6 space-y-4 border-t border-line pt-6">
+            {[
+              ["Condition", "ETF flows, macro shifts, sentiment posture, sector leadership"],
+              ["Operator control", "Clear enable, disable, and review points before automation depth expands"],
+              ["Outcome", "A deterministic execution event with a persistent journal trail"]
+            ].map(([label, body]) => (
+              <div key={label} className="grid gap-2 sm:grid-cols-[132px_1fr]">
+                <p className="text-xs font-semibold uppercase tracking-[0.22em] text-slate">
+                  {label}
+                </p>
+                <p className="text-sm leading-7 text-slate">{body}</p>
+              </div>
+            ))}
+          </div>
         </Panel>
       </section>
     </div>
