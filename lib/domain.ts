@@ -142,6 +142,7 @@ export interface ExecutionPlanRequest {
 export interface ExecutionPreviewOrder {
   clOrdID: string;
   role: "entry" | "take_profit" | "stop_loss";
+  intentLabel: string;
   side: "BUY" | "SELL";
   type: "LIMIT" | "MARKET";
   timeInForce: "GTC" | "IOC";

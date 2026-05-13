@@ -143,6 +143,7 @@ After Copilot generation is healthy and your SoDEX testnet credentials are confi
 - `POST /api/execution/submit` returns a signed SoDEX testnet submission result
 - If `DATABASE_URL` is configured and reachable, execution persistence returns `saved`
 - If `DATABASE_URL` is empty, execution still works and persistence returns `skipped`
+- `/journal` only shows real activity after persistence is enabled; trades submitted while persistence is skipped cannot be backfilled there yet
 
 If execution preview or submission fails:
 

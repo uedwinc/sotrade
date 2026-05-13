@@ -215,6 +215,7 @@ function describeOrderPacket(preview: ExecutionPreviewResponse, request: ParsedE
 
 function buildOrderPreview(
   role: "entry" | "take_profit" | "stop_loss",
+  intentLabel: string,
   side: number,
   type: 1 | 2,
   timeInForce: 1 | 3,
@@ -229,6 +230,7 @@ function buildOrderPreview(
   return {
     clOrdID: input.clOrdID,
     role,
+    intentLabel,
     side: humanSide(side),
     type: type === 1 ? "LIMIT" : "MARKET",
     timeInForce: timeInForce === 1 ? "GTC" : "IOC",
@@ -771,8 +773,8 @@ function buildExecutionPreview(
       false,
       `The ${horizon.shortLabel.toLowerCase()} setup stop distance is too tight for live execution.`,
       [
-        `Actual stop distance: ${(stopDistancePct * 100).toFixed(2)}%`,
-        `Minimum ${horizon.shortLabel.toLowerCase()} stop distance: ${(horizon.minimumStopDistancePct * 100).toFixed(2)}%`
+      `Actual stop distance: ${(stopDistancePct * 100).toFixed(2)}%`,
+      `Minimum ${horizon.shortLabel.toLowerCase()} stop distance: ${(horizon.minimumStopDistancePct * 100).toFixed(2)}%`
       ]
     );
   }
@@ -781,6 +783,9 @@ function buildExecutionPreview(
   warnings.push("This preview currently uses the first take-profit level from the Copilot plan for live bracket execution.");
   warnings.push(
     `Current SoDEX mark price is ${round(marketContext.markPrice, 2)} and current index price is ${round(marketContext.indexPrice, 2)}.`
+  );
+  warnings.push(
+    "Exit order direction reflects the closing action, not the held position. A short closes with BUY reduce-only orders; a long closes with SELL reduce-only orders."
   );
   warnings.push(
     "Attached TP/SL orders are sent as market stops without optional price caps to reduce SoDEX price-filter rejections."
@@ -854,24 +859,49 @@ function buildExecutionPreview(
     adjustments,
     warnings,
     orders: [
-      buildOrderPreview("entry", entrySideCode, 1, 1, {
+      buildOrderPreview(
+        "entry",
+        request.thesisBias === "long" ? "Open long entry" : "Open short entry",
+        entrySideCode,
+        1,
+        1,
+        {
         clOrdID: entryOrder.clOrdID,
         quantity: quantityString,
         price: entryPriceString,
         reduceOnly: false
-      }),
-      buildOrderPreview("take_profit", exitSideCode, 2, 3, {
+      }
+      ),
+      buildOrderPreview(
+        "take_profit",
+        request.thesisBias === "long"
+          ? "Close long take-profit"
+          : "Close short take-profit",
+        exitSideCode,
+        2,
+        3,
+        {
         clOrdID: takeProfitOrder.clOrdID,
         quantity: quantityString,
         stopPrice: takeProfitString,
         reduceOnly: true
-      }),
-      buildOrderPreview("stop_loss", exitSideCode, 2, 3, {
+      }
+      ),
+      buildOrderPreview(
+        "stop_loss",
+        request.thesisBias === "long"
+          ? "Close long stop-loss"
+          : "Close short stop-loss",
+        exitSideCode,
+        2,
+        3,
+        {
         clOrdID: stopLossOrder.clOrdID,
         quantity: quantityString,
         stopPrice: stopPriceString,
         reduceOnly: true
-      })
+      }
+      )
     ],
     requestBody: {
       accountID: credentials.accountId,

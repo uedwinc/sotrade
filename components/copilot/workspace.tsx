@@ -736,6 +736,10 @@ export function CopilotWorkspace({
                         This execution path uses a SoDEX testnet perps bracket order on `BTC-USD` with one attached take-profit and one attached stop-loss. The current live packet uses the first take-profit level from the Copilot plan.
                       </div>
 
+                      <div className="rounded-[20px] border border-line bg-cloud p-4 text-[0.98rem] leading-7 text-ink/76">
+                        Exit order direction reflects the action needed to close the position. A short position closes with BUY reduce-only orders, while a long position closes with SELL reduce-only orders.
+                      </div>
+
                       {isPreviewingExecution || isSubmittingExecution ? (
                         <div className="rounded-[20px] border border-signal/20 bg-signal/5 p-4">
                           <div className="flex items-start gap-3">
@@ -805,12 +809,19 @@ export function CopilotWorkspace({
                                   <div className="flex flex-wrap items-center justify-between gap-3">
                                     <div>
                                       <p className="text-[1rem] font-medium text-ink">
-                                        {order.role.replaceAll("_", " ")}
+                                        {order.intentLabel}
                                       </p>
                                       <p className="mt-1 text-sm text-ink/72">{order.clOrdID}</p>
                                     </div>
-                                    <div className="rounded-full border border-line bg-paper px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.12em] text-slate">
-                                      {order.side} / {order.type}
+                                    <div className="flex flex-wrap items-center gap-2">
+                                      <div className="rounded-full border border-line bg-paper px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.12em] text-slate">
+                                        {order.side} / {order.type}
+                                      </div>
+                                      {order.reduceOnly ? (
+                                        <div className="rounded-full border border-signal/20 bg-signal/10 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.12em] text-signal">
+                                          Reduce only
+                                        </div>
+                                      ) : null}
                                     </div>
                                   </div>
                                   <div className="mt-3 grid gap-3 sm:grid-cols-4">

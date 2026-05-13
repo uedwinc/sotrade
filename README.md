@@ -34,12 +34,14 @@ Milestone 4 adds:
 - `POST /api/execution/preview` for bracket-packet normalization and validation
 - `POST /api/execution/submit` for signed SoDEX testnet perps order submission
 - Optional Postgres persistence for execution submissions
+- A real `/journal` view that reads persisted Copilot and execution activity when `DATABASE_URL` is configured
 
 ## Core principles
 
 - Testnet only. No mainnet execution is allowed in this codebase at this stage.
 - No secrets committed to GitHub.
 - Build in slices, test each slice in Codespaces, then move forward.
+- If `DATABASE_URL` is empty, Copilot and testnet execution can still work, but `/journal` will not show live activity because nothing is being persisted.
 
 ## App surfaces
 

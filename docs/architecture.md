@@ -118,6 +118,7 @@ Responsibilities:
 - Copilot-driven testnet order preview and submission
 - Bracket packet normalization against SoDEX symbol filters
 - Execution confirmations and optional persistence
+- Journal reads persisted Copilot and execution runs instead of placeholder events
 
 ### Milestone 5
 
