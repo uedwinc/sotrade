@@ -378,8 +378,9 @@ export async function getMarketSignalSnapshot(): Promise<SignalSnapshot> {
     generatedAt: new Date().toISOString(),
     status: failedCount === 0 ? "ok" : "partial",
     notes,
-    signals
-      .sort((left, right) => right.observedAt.localeCompare(left.observedAt)),
+    signals: [...signals].sort((left, right) =>
+      right.observedAt.localeCompare(left.observedAt)
+    ),
     sourceStatus
   };
 }
