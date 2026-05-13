@@ -107,6 +107,9 @@ Responsibilities:
 - Copilot generation endpoint
 - Structured thesis response
 - Trade-plan cards
+- Amazon Bedrock integration
+- Coinbase BTC price anchoring
+- Optional Postgres persistence for generated Copilot runs
 
 ### Milestone 4
 

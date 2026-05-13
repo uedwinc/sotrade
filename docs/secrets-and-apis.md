@@ -118,7 +118,51 @@ Recommended way to generate it in Codespaces later:
 
 - Use a long random string of at least 32 characters
 
-## 5. Rules for handling secrets
+## 5. Amazon Bedrock configuration
+
+Purpose:
+
+- Run the SoTrade AI Copilot with Claude Sonnet 4.6 on Amazon Bedrock
+
+Required values:
+
+```env
+AWS_REGION=us-east-1
+BEDROCK_MODEL_ID=anthropic.claude-sonnet-4-6
+```
+
+Authentication options:
+
+- Preferred: IAM role / SSO credentials available to the Codespace runtime
+- Alternative: standard AWS environment credentials
+
+If you use environment credentials, place them in `.env.local` or Codespaces secrets:
+
+```env
+AWS_ACCESS_KEY_ID=your_access_key
+AWS_SECRET_ACCESS_KEY=your_secret_key
+AWS_SESSION_TOKEN=your_optional_session_token
+```
+
+Important:
+
+- The model ID above is the official Bedrock programmatic model ID for Claude Sonnet 4.6.
+- Your AWS account and region must have Bedrock runtime access for this model.
+- If your account uses a different approved inference profile or regional routing ID later, update `BEDROCK_MODEL_ID`.
+
+## 6. Coinbase public price anchor
+
+Purpose:
+
+- Anchor BTC entry / stop / take-profit levels to a current market spot price
+
+Current source:
+
+- Coinbase public spot price endpoint for `BTC-USD`
+
+No secret is required for this source in the current milestone.
+
+## 7. Rules for handling secrets
 
 - Only store real secrets in `.env.local`
 - Never paste secrets into source files

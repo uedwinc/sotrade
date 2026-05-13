@@ -45,3 +45,81 @@ export interface SignalSnapshot {
   signals: NormalizedSignal[];
   sourceStatus: Record<string, "ok" | "error" | "skipped">;
 }
+
+export type CopilotAsset = "BTC";
+export type CopilotHorizon = "swing_1_7d";
+
+export interface PriceAnchor {
+  source: "coinbase";
+  symbol: "BTC-USD";
+  spotPriceUsd: number;
+  observedAt: string;
+}
+
+export interface CopilotRequest {
+  asset: CopilotAsset;
+  horizon: CopilotHorizon;
+  accountEquityUsd: number;
+  maxRiskPct: number;
+}
+
+export interface CopilotThesis {
+  bias: MarketBias;
+  confidence: number;
+  summary: string;
+  rationale: string[];
+  risks: string[];
+}
+
+export interface CopilotTradePlan {
+  actionable: boolean;
+  entryPriceUsd: number | null;
+  stopLossUsd: number | null;
+  takeProfitUsd: number[];
+  invalidation: string;
+  executionNotes: string[];
+}
+
+export interface CopilotSizing {
+  accountEquityUsd: number;
+  maxRiskPct: number;
+  riskUsd: number;
+  stopDistanceUsd: number | null;
+  stopDistancePct: number | null;
+  positionSizeBtc: number | null;
+  positionNotionalUsd: number | null;
+}
+
+export interface CopilotPersistence {
+  status: "saved" | "skipped" | "error";
+  id?: string;
+  reason?: string;
+}
+
+export interface CopilotModelInfo {
+  provider: "bedrock";
+  modelId: string;
+}
+
+export interface CopilotResponse {
+  generatedAt: string;
+  asset: CopilotAsset;
+  horizon: CopilotHorizon;
+  signalSnapshot: SignalSnapshot;
+  priceAnchor: PriceAnchor;
+  thesis: CopilotThesis;
+  tradePlan: CopilotTradePlan;
+  sizing: CopilotSizing;
+  persistence: CopilotPersistence;
+  model: CopilotModelInfo;
+}
+
+export interface CopilotErrorResponse {
+  error: {
+    code: string;
+    message: string;
+    retryable: boolean;
+    details?: string[];
+  };
+  model: CopilotModelInfo;
+}

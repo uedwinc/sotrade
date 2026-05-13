@@ -48,3 +48,17 @@ export function getSoSoValueEnvironment() {
       readEnv("SOSOVALUE_BTC_CURRENCY_ID") ?? "1673723677362319866"
   };
 }
+
+export function getDatabaseUrl() {
+  return readEnv("DATABASE_URL");
+}
+
+export function getBedrockEnvironment() {
+  return {
+    region:
+      readEnv("AWS_REGION") ??
+      readEnv("AWS_DEFAULT_REGION") ??
+      "us-east-1",
+    modelId: readEnv("BEDROCK_MODEL_ID") ?? "anthropic.claude-sonnet-4-6"
+  };
+}

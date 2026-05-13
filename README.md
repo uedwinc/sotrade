@@ -20,6 +20,13 @@ Milestone 2 adds:
 - A live `/api/signals` endpoint for Codespaces verification
 - Overview UI panels that surface the current signal snapshot
 
+Milestone 3 adds:
+
+- A structured BTC Copilot workspace on `/copilot`
+- `POST /api/copilot/thesis` for Bedrock-powered trade-plan generation
+- Coinbase BTC price anchoring for entry / TP / SL proposals
+- Optional Postgres persistence for generated Copilot plans
+
 ## Core principles
 
 - Testnet only. No mainnet execution is allowed in this codebase at this stage.
@@ -33,6 +40,7 @@ Milestone 2 adds:
 - `/rules` No-code signal rules engine
 - `/journal` Execution journal and operational timeline
 - `/api/signals` Normalized live SoSoValue signal snapshot
+- `/api/copilot/thesis` Bedrock-powered BTC thesis and trade-plan generation
 
 ## Local setup
 

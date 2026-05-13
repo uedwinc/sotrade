@@ -51,6 +51,8 @@ At the start, focus on:
 - `SOSOVALUE_API_KEY`
 - `SOSOVALUE_OPENAPI_BASE_URL`
 - `SOSOVALUE_BTC_CURRENCY_ID`
+- `AWS_REGION`
+- `BEDROCK_MODEL_ID`
 - `SODEX_ACCOUNT_ID`
 - `SODEX_API_WALLET_ADDRESS`
 - `SODEX_PRIVATE_KEY`
@@ -58,6 +60,11 @@ At the start, focus on:
 - `NEXTAUTH_SECRET`
 
 If you do not yet have the final database provider chosen, keep `DATABASE_URL` empty for now. The UI shell will still be usable.
+
+For Milestone 3, Bedrock credentials can be provided in either of these ways:
+
+- IAM role / SSO style AWS credentials available to the Codespace runtime
+- Standard environment credentials such as `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`, and optional `AWS_SESSION_TOKEN`
 
 ## 6. Start the app
 
@@ -100,16 +107,36 @@ If the response errors:
 - Recheck `SOSOVALUE_OPENAPI_BASE_URL`
 - Recheck outbound network access from your Codespace
 
-## 9. What comes next after milestone 2 passes
+## 9. What to test in milestone 3
+
+After Milestone 2 is healthy and Bedrock access is configured, verify:
+
+- The `/copilot` page shows the structured BTC workspace
+- You can input account equity and max risk %
+- Clicking `Generate BTC trade plan` returns either:
+  - a concrete BTC trade plan with entry / stop / take profits, or
+  - a clean no-trade decision with rationale
+- `POST /api/copilot/thesis` returns structured JSON
+- If `DATABASE_URL` is configured and reachable, persistence status becomes `saved`
+- If `DATABASE_URL` is empty, persistence status becomes `skipped` without breaking generation
+
+If Copilot generation fails:
+
+- Recheck `AWS_REGION`
+- Recheck `BEDROCK_MODEL_ID`
+- Recheck that your AWS credentials in Codespaces can access Amazon Bedrock runtime
+- Recheck that the chosen model is enabled for your account and region
+
+## 10. What comes next after milestone 3 passes
 
 Once the shell is running correctly, the next implementation slice should be:
 
-1. Copilot thesis API route
-2. Structured trade-plan generation
-3. Testnet-only SoDEX execution service
-4. Order confirmation and journal persistence
+1. SoDEX testnet signing service
+2. Order preview and submission flow
+3. Execution confirmations
+4. Journal persistence and operator review surfaces
 
-## 10. Safety checklist
+## 11. Safety checklist
 
 Before every push:
 
