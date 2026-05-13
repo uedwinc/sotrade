@@ -102,8 +102,8 @@ export default async function HomePage() {
               "Every configured SoDEX URL is checked for testnet scope.",
               "The signer is expected to be a dedicated testnet API wallet.",
               "Decision support comes before automation depth."
-            ].map((item) => (
-              <div key={item} className="flex items-start gap-3 text-[1rem] leading-7 text-ink/76">
+            ].map((item, index) => (
+              <div key={`posture-${index}`} className="flex items-start gap-3 text-[1rem] leading-7 text-ink/76">
                 <ShieldCheck className="mt-1 h-4 w-4 text-signal" />
                 <span>{item}</span>
               </div>
@@ -155,9 +155,9 @@ export default async function HomePage() {
 
           {snapshot.signals.length > 0 ? (
             <div className="mt-6 space-y-3">
-              {snapshot.signals.map((signal) => (
+              {snapshot.signals.map((signal, index) => (
                 <Disclosure
-                  key={signal.id}
+                  key={`${signal.id}-${signal.observedAt}-${index}`}
                   title={signal.title}
                   meta={
                     <div className="flex flex-wrap items-center gap-3">
@@ -179,8 +179,8 @@ export default async function HomePage() {
                         Evidence
                       </p>
                       <div className="mt-2 grid gap-2">
-                        {signal.evidence.map((item) => (
-                          <div key={item} className="text-[0.98rem] leading-7 text-ink/76">
+                        {signal.evidence.map((item, evidenceIndex) => (
+                          <div key={`${signal.id}-evidence-${evidenceIndex}`} className="text-[0.98rem] leading-7 text-ink/76">
                             {item}
                           </div>
                         ))}
@@ -266,8 +266,8 @@ export default async function HomePage() {
 
           <Disclosure title="Snapshot notes" meta={`${snapshot.notes.length} active notes`}>
             <div className="grid gap-2 text-[0.98rem] leading-7 text-ink/76">
-              {snapshot.notes.map((item) => (
-                <div key={item}>{item}</div>
+              {snapshot.notes.map((item, index) => (
+                <div key={`snapshot-note-${index}`}>{item}</div>
               ))}
             </div>
           </Disclosure>

@@ -113,6 +113,17 @@ function waitForNextPaint() {
   });
 }
 
+async function waitForMinimumBusyWindow(startedAt: number, minimumMs = 900) {
+  const elapsed = Date.now() - startedAt;
+  const remaining = minimumMs - elapsed;
+
+  if (remaining > 0) {
+    await new Promise<void>((resolve) => {
+      window.setTimeout(() => resolve(), remaining);
+    });
+  }
+}
+
 export function CopilotWorkspace({
   initialSignalSnapshot,
   initialPriceAnchor,
@@ -188,6 +199,8 @@ export function CopilotWorkspace({
   }
 
   async function requestExecutionPreview(requestPayload: ExecutionPlanRequest) {
+    const startedAt = Date.now();
+
     try {
       flushSync(() => {
         setIsPreviewingExecution(true);
@@ -233,6 +246,7 @@ export function CopilotWorkspace({
       });
       return null;
     } finally {
+      await waitForMinimumBusyWindow(startedAt);
       setIsPreviewingExecution(false);
     }
   }
@@ -261,6 +275,7 @@ export function CopilotWorkspace({
               className="mt-6 space-y-5"
               onSubmit={async (event) => {
                 event.preventDefault();
+                const startedAt = Date.now();
 
                 try {
                   flushSync(() => {
@@ -314,6 +329,7 @@ export function CopilotWorkspace({
                     }
                   });
                 } finally {
+                  await waitForMinimumBusyWindow(startedAt);
                   setIsGenerating(false);
                 }
               }}
@@ -701,6 +717,7 @@ export function CopilotWorkspace({
                           disabled={isPreviewingExecution || isSubmittingExecution}
                           onClick={async () => {
                             const requestPayload = buildExecutionRequest();
+                            const startedAt = Date.now();
 
                             if (!requestPayload) {
                               return;
@@ -754,6 +771,7 @@ export function CopilotWorkspace({
                                 }
                               });
                             } finally {
+                              await waitForMinimumBusyWindow(startedAt);
                               setIsSubmittingExecution(false);
                             }
                           }}
@@ -1104,24 +1122,28 @@ export function CopilotWorkspace({
       </div>
 
       {activePendingState ? (
-        <div className="pointer-events-none fixed bottom-5 right-5 z-50 w-[min(420px,calc(100vw-2rem))]">
-          <div className="rounded-[22px] border border-signal/20 bg-ink px-5 py-4 text-cloud shadow-card">
-            <div className="flex items-start gap-3">
-              <LoaderCircle className="mt-0.5 h-5 w-5 shrink-0 animate-spin text-cloud" />
-              <div>
-                <p className="text-sm font-semibold uppercase tracking-[0.12em] text-cloud/72">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-ink/18 px-4 backdrop-blur-[2px]">
+          <div className="w-full max-w-lg rounded-[26px] border border-signal/20 bg-cloud p-6 shadow-card">
+            <div className="flex items-start gap-4">
+              <div className="rounded-full border border-signal/20 bg-signal/10 p-3">
+                <LoaderCircle className="h-6 w-6 animate-spin text-signal" />
+              </div>
+              <div className="min-w-0 flex-1">
+                <p className="text-sm font-semibold uppercase tracking-[0.14em] text-slate">
                   Working
                 </p>
-                <p className="mt-1 text-[1rem] font-medium text-cloud">
+                <p className="mt-2 text-xl font-semibold tracking-[-0.02em] text-ink">
                   {activePendingState.title}
                 </p>
-                <p className="mt-2 text-sm leading-6 text-cloud/80">
+                <p className="mt-3 text-[1rem] leading-7 text-ink/76">
                   {activePendingState.detail}
                 </p>
+                <div className="mt-5 h-2 overflow-hidden rounded-full bg-paper">
+                  <div className="h-full w-1/2 animate-pulse rounded-full bg-signal" />
+                </div>
               </div>
             </div>
           </div>
-        </div>
       ) : null}
     </div>
   );

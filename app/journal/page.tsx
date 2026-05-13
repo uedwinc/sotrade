@@ -77,9 +77,9 @@ export default async function JournalPage() {
                 "Copilot runs appear here only after they are successfully persisted.",
                 "Execution entries represent packet submission, not final exchange lifecycle state.",
                 "Trades placed before persistence was enabled cannot be reconstructed into the journal yet."
-              ].map((item) => (
+              ].map((item, index) => (
                 <div
-                  key={item}
+                  key={`journal-principle-${index}`}
                   className="border-b border-line pb-4 text-[1rem] leading-7 text-ink/76 last:border-b-0 last:pb-0"
                 >
                   {item}
@@ -168,9 +168,9 @@ export default async function JournalPage() {
                 "Persisted Copilot thesis generations with horizon, bias, and trade levels.",
                 "Persisted execution submissions with gateway acceptance context.",
                 "Not yet included: SoDEX fill reconciliation, order lifecycle updates, or closed-position outcomes."
-              ].map((item) => (
+              ].map((item, index) => (
                 <div
-                  key={item}
+                  key={`journal-scope-${index}`}
                   className="rounded-[18px] border border-line bg-paper p-4 text-[0.98rem] leading-7 text-ink/76"
                 >
                   {item}
