@@ -25,6 +25,7 @@ import type {
   CopilotErrorResponse,
   CopilotResponse,
   ExecutionErrorResponse,
+  ExecutionPlanRequest,
   ExecutionPreviewResponse,
   ExecutionSubmitResponse,
   PriceAnchor,
@@ -156,6 +157,53 @@ export function CopilotWorkspace({
       copilotGeneratedAt: result.generatedAt,
       copilotRunId: result.persistence.id
     };
+  }
+
+  async function requestExecutionPreview(requestPayload: ExecutionPlanRequest) {
+    try {
+      setIsPreviewingExecution(true);
+      setExecutionError(null);
+      setExecutionSubmit(null);
+      setExecutionPreview(null);
+
+      const response = await fetch("/api/execution/preview", {
+        method: "POST",
+        headers: {
+          "content-type": "application/json"
+        },
+        body: JSON.stringify(requestPayload)
+      });
+      const body = (await response.json()) as
+        | ExecutionPreviewResponse
+        | ExecutionErrorResponse;
+
+      if (!response.ok) {
+        setExecutionPreview(null);
+        setExecutionError(body as ExecutionErrorResponse);
+        return null;
+      }
+
+      const preview = body as ExecutionPreviewResponse;
+      setExecutionPreview(preview);
+      return preview;
+    } catch (previewError) {
+      setExecutionPreview(null);
+      setExecutionError({
+        error: {
+          code: "EXECUTION_PREVIEW_FAILED",
+          message: "The browser could not build a SoDEX execution preview.",
+          retryable: true,
+          details: [
+            previewError instanceof Error
+              ? previewError.message
+              : "Unknown execution preview error"
+          ]
+        }
+      });
+      return null;
+    } finally {
+      setIsPreviewingExecution(false);
+    }
   }
 
   return (
@@ -415,8 +463,8 @@ export function CopilotWorkspace({
                     {error.error.message}
                   </p>
                   <div className="mt-4 grid gap-2">
-                    {(error.error.details ?? []).map((item) => (
-                      <div key={item} className="rounded-2xl border border-line bg-paper px-4 py-3 text-[0.98rem] leading-7 text-ink/76">
+                    {(error.error.details ?? []).map((item, index) => (
+                      <div key={`copilot-error-${index}`} className="rounded-2xl border border-line bg-paper px-4 py-3 text-[0.98rem] leading-7 text-ink/76">
                         {item}
                       </div>
                     ))}
@@ -507,8 +555,8 @@ export function CopilotWorkspace({
                         Rationale
                       </p>
                       <div className="mt-3 grid gap-2">
-                        {result.thesis.rationale.map((item) => (
-                          <div key={item} className="rounded-2xl border border-line bg-cloud px-4 py-3 text-[0.98rem] leading-7 text-ink/76">
+                        {result.thesis.rationale.map((item, index) => (
+                          <div key={`rationale-${index}`} className="rounded-2xl border border-line bg-cloud px-4 py-3 text-[0.98rem] leading-7 text-ink/76">
                             {item}
                           </div>
                         ))}
@@ -519,8 +567,8 @@ export function CopilotWorkspace({
                         Risks
                       </p>
                       <div className="mt-3 grid gap-2">
-                        {result.thesis.risks.map((item) => (
-                          <div key={item} className="rounded-2xl border border-line bg-cloud px-4 py-3 text-[0.98rem] leading-7 text-ink/76">
+                        {result.thesis.risks.map((item, index) => (
+                          <div key={`risk-${index}`} className="rounded-2xl border border-line bg-cloud px-4 py-3 text-[0.98rem] leading-7 text-ink/76">
                             {item}
                           </div>
                         ))}
@@ -548,8 +596,8 @@ export function CopilotWorkspace({
                           Execution notes
                         </p>
                         <div className="mt-3 grid gap-2">
-                          {result.tradePlan.executionNotes.map((item) => (
-                            <div key={item} className="text-[0.98rem] leading-7 text-ink/76">
+                          {result.tradePlan.executionNotes.map((item, index) => (
+                            <div key={`execution-note-${index}`} className="text-[0.98rem] leading-7 text-ink/76">
                               {item}
                             </div>
                           ))}
@@ -599,53 +647,18 @@ export function CopilotWorkspace({
                             if (!requestPayload) {
                               return;
                             }
-
-                            try {
-                              setIsPreviewingExecution(true);
-                              setExecutionError(null);
-                              setExecutionSubmit(null);
-
-                              const response = await fetch("/api/execution/preview", {
-                                method: "POST",
-                                headers: {
-                                  "content-type": "application/json"
-                                },
-                                body: JSON.stringify(requestPayload)
-                              });
-                              const body = (await response.json()) as
-                                | ExecutionPreviewResponse
-                                | ExecutionErrorResponse;
-
-                              if (!response.ok) {
-                                setExecutionPreview(null);
-                                setExecutionError(body as ExecutionErrorResponse);
-                                return;
-                              }
-
-                              setExecutionPreview(body as ExecutionPreviewResponse);
-                            } catch (previewError) {
-                              setExecutionPreview(null);
-                              setExecutionError({
-                                error: {
-                                  code: "EXECUTION_PREVIEW_FAILED",
-                                  message: "The browser could not build a SoDEX execution preview.",
-                                  retryable: true,
-                                  details: [
-                                    previewError instanceof Error
-                                      ? previewError.message
-                                      : "Unknown execution preview error"
-                                  ]
-                                }
-                              });
-                            } finally {
-                              setIsPreviewingExecution(false);
-                            }
+                            await requestExecutionPreview(requestPayload);
                           }}
                           className="inline-flex items-center justify-center rounded-full border border-line bg-paper px-5 py-3 text-sm font-medium text-ink transition hover:border-ink/25 disabled:cursor-not-allowed disabled:opacity-60"
                         >
-                          {isPreviewingExecution
-                            ? "Preparing preview..."
-                            : "Preview SoDEX order packet"}
+                          {isPreviewingExecution ? (
+                            <span className="inline-flex items-center gap-2">
+                              <LoaderCircle className="h-4 w-4 animate-spin" />
+                              Preparing preview...
+                            </span>
+                          ) : (
+                            "Preview SoDEX order packet"
+                          )}
                         </button>
 
                         <button
@@ -661,6 +674,13 @@ export function CopilotWorkspace({
                             try {
                               setIsSubmittingExecution(true);
                               setExecutionError(null);
+                              setExecutionSubmit(null);
+
+                              const preview = await requestExecutionPreview(requestPayload);
+
+                              if (!preview) {
+                                return;
+                              }
 
                               const response = await fetch("/api/execution/submit", {
                                 method: "POST",
@@ -701,9 +721,14 @@ export function CopilotWorkspace({
                           }}
                           className="inline-flex items-center justify-center rounded-full bg-ink px-5 py-3 text-sm font-medium text-cloud transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-60"
                         >
-                          {isSubmittingExecution
-                            ? "Submitting..."
-                            : "Execute on SoDEX testnet"}
+                          {isSubmittingExecution ? (
+                            <span className="inline-flex items-center gap-2">
+                              <LoaderCircle className="h-4 w-4 animate-spin" />
+                              Submitting...
+                            </span>
+                          ) : (
+                            "Execute on SoDEX testnet"
+                          )}
                         </button>
                       </div>
 
@@ -711,14 +736,34 @@ export function CopilotWorkspace({
                         This execution path uses a SoDEX testnet perps bracket order on `BTC-USD` with one attached take-profit and one attached stop-loss. The current live packet uses the first take-profit level from the Copilot plan.
                       </div>
 
+                      {isPreviewingExecution || isSubmittingExecution ? (
+                        <div className="rounded-[20px] border border-signal/20 bg-signal/5 p-4">
+                          <div className="flex items-start gap-3">
+                            <LoaderCircle className="mt-1 h-5 w-5 animate-spin text-signal" />
+                            <div>
+                              <p className="text-[1rem] font-medium text-ink">
+                                {isSubmittingExecution
+                                  ? "Submitting the SoDEX testnet packet"
+                                  : "Preparing the live SoDEX packet"}
+                              </p>
+                              <p className="mt-2 text-[0.98rem] leading-7 text-ink/76">
+                                {isSubmittingExecution
+                                  ? "SoTrade is refreshing the packet and sending the signed bracket order to SoDEX testnet."
+                                  : "SoTrade is normalizing the Copilot plan against live SoDEX symbol and mark-price data."}
+                              </p>
+                            </div>
+                          </div>
+                        </div>
+                      ) : null}
+
                       {executionError ? (
                         <div className="rounded-[20px] border border-ember/20 bg-amber-50 p-4">
                           <p className="text-[1rem] font-medium text-ember">
                             {executionError.error.message}
                           </p>
                           <div className="mt-3 grid gap-2">
-                            {(executionError.error.details ?? []).map((item) => (
-                              <div key={item} className="text-[0.98rem] leading-7 text-ember">
+                            {(executionError.error.details ?? []).map((item, index) => (
+                              <div key={`execution-error-${index}`} className="text-[0.98rem] leading-7 text-ember">
                                 {item}
                               </div>
                             ))}
@@ -728,10 +773,13 @@ export function CopilotWorkspace({
 
                       {executionPreview ? (
                         <div className="grid gap-4">
-                          <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+                          <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
                             {[
                               ["Environment", executionPreview.environment],
                               ["Symbol", executionPreview.symbol.name],
+                              ["Trade cycle", activeHorizon.label],
+                              ["Mark price", formatUsd(executionPreview.market.markPrice)],
+                              ["Index price", formatUsd(executionPreview.market.indexPrice)],
                               ["Account ID", String(executionPreview.account.accountId)],
                               ["API wallet", executionPreview.account.apiWalletAddress]
                             ].map(([label, value]) => (
@@ -791,8 +839,8 @@ export function CopilotWorkspace({
                               meta={`${executionPreview.adjustments.length} adjustments applied`}
                             >
                               <div className="grid gap-2 text-[0.98rem] leading-7 text-ink/76">
-                                {executionPreview.adjustments.map((item) => (
-                                  <div key={item}>{item}</div>
+                                {executionPreview.adjustments.map((item, index) => (
+                                  <div key={`adjustment-${index}`}>{item}</div>
                                 ))}
                               </div>
                             </Disclosure>
@@ -803,8 +851,8 @@ export function CopilotWorkspace({
                             meta={`${executionPreview.warnings.length} live execution notes`}
                           >
                             <div className="grid gap-2 text-[0.98rem] leading-7 text-ink/76">
-                              {executionPreview.warnings.map((item) => (
-                                <div key={item}>{item}</div>
+                              {executionPreview.warnings.map((item, index) => (
+                                <div key={`warning-${index}`}>{item}</div>
                               ))}
                             </div>
                           </Disclosure>
@@ -875,9 +923,9 @@ export function CopilotWorkspace({
                   meta={`${result.signalSnapshot.signals.length} signals supporting this request`}
                 >
                   <div className="space-y-3">
-                    {result.signalSnapshot.signals.map((signal) => (
+                    {result.signalSnapshot.signals.map((signal, index) => (
                       <Disclosure
-                        key={signal.id}
+                        key={`${signal.id}-${signal.observedAt}-${index}`}
                         title={signal.title}
                         meta={
                           <div className="flex flex-wrap items-center gap-3">
@@ -898,8 +946,8 @@ export function CopilotWorkspace({
                               Evidence
                             </p>
                             <div className="mt-2 grid gap-2">
-                              {signal.evidence.map((item) => (
-                                <div key={item} className="text-[0.98rem] leading-7 text-ink/76">
+                              {signal.evidence.map((item, evidenceIndex) => (
+                                <div key={`${signal.id}-evidence-${evidenceIndex}`} className="text-[0.98rem] leading-7 text-ink/76">
                                   {item}
                                 </div>
                               ))}
@@ -932,8 +980,8 @@ export function CopilotWorkspace({
                           Snapshot notes
                         </p>
                         <div className="mt-3 grid gap-2">
-                          {result.signalSnapshot.notes.map((item) => (
-                            <div key={item} className="text-[0.98rem] leading-7 text-ink/76">
+                          {result.signalSnapshot.notes.map((item, index) => (
+                            <div key={`snapshot-note-${index}`} className="text-[0.98rem] leading-7 text-ink/76">
                               {item}
                             </div>
                           ))}

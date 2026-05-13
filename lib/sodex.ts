@@ -165,11 +165,12 @@ function normalizeQuantity(value: number, stepSize: number, precision: number) {
 
 function formatDecimal(value: number, precision: number) {
   const fixed = value.toFixed(precision);
-  return fixed.replace(/\.?0+$/, "");
-}
 
-function clampPositive(value: number, fallback: number) {
-  return value > 0 ? value : fallback;
+  if (!fixed.includes(".")) {
+    return fixed;
+  }
+
+  return fixed.replace(/\.?0+$/, "");
 }
 
 function makeClOrdId(role: "entry" | "take_profit" | "stop_loss") {
@@ -187,6 +188,29 @@ function entrySide(bias: "long" | "short") {
 
 function humanSide(side: number): "BUY" | "SELL" {
   return side === 1 ? "BUY" : "SELL";
+}
+
+function describeOrderPacket(preview: ExecutionPreviewResponse, request: ParsedExecutionRequest) {
+  const entryOrder = preview.orders.find((order) => order.role === "entry");
+  const takeProfitOrder = preview.orders.find((order) => order.role === "take_profit");
+  const stopLossOrder = preview.orders.find((order) => order.role === "stop_loss");
+  const horizon = getCopilotHorizonOption(request.copilotHorizon);
+
+  return [
+    `Trade cycle: ${horizon.label}`,
+    `Mark / index at submit: ${round(preview.market.markPrice, 2)} / ${round(preview.market.indexPrice, 2)}`,
+    `Entry / stop / take-profit: ${request.entryPriceUsd} / ${request.stopLossUsd} / ${request.takeProfitUsd[0]}`,
+    `Normalized packet quantity: ${entryOrder?.quantity ?? "unknown"} BTC`,
+    entryOrder
+      ? `Entry packet: ${entryOrder.side} ${entryOrder.type} @ ${entryOrder.price ?? "market"}`
+      : "Entry packet: unavailable",
+    takeProfitOrder
+      ? `Take-profit packet: ${takeProfitOrder.side} ${takeProfitOrder.type} trigger ${takeProfitOrder.stopPrice ?? "none"}`
+      : "Take-profit packet: unavailable",
+    stopLossOrder
+      ? `Stop-loss packet: ${stopLossOrder.side} ${stopLossOrder.type} trigger ${stopLossOrder.stopPrice ?? "none"}`
+      : "Stop-loss packet: unavailable"
+  ];
 }
 
 function buildOrderPreview(
@@ -758,6 +782,9 @@ function buildExecutionPreview(
   warnings.push(
     `Current SoDEX mark price is ${round(marketContext.markPrice, 2)} and current index price is ${round(marketContext.indexPrice, 2)}.`
   );
+  warnings.push(
+    "Attached TP/SL orders are sent as market stops without optional price caps to reduce SoDEX price-filter rejections."
+  );
 
   const entrySideCode = entrySide(request.thesisBias);
   const exitSideCode = oppositeSide(request.thesisBias);
@@ -765,52 +792,6 @@ function buildExecutionPreview(
   const entryPriceString = formatDecimal(normalizedEntry, pricePrecision);
   const stopPriceString = formatDecimal(normalizedStop, pricePrecision);
   const takeProfitString = formatDecimal(normalizedTp, pricePrecision);
-  const deviationRatio = Number.isFinite(Number(symbol.marketDeviationRatio))
-    ? Number(symbol.marketDeviationRatio)
-    : 0;
-  const normalizedTpExecutionPrice = request.thesisBias === "long"
-    ? normalizePrice(
-        clampPositive(normalizedTp * (1 - deviationRatio), normalizedTp),
-        tickSize,
-        pricePrecision
-      )
-    : normalizePrice(normalizedTp * (1 + deviationRatio), tickSize, pricePrecision);
-  const normalizedStopExecutionPrice = request.thesisBias === "long"
-    ? normalizePrice(
-        clampPositive(normalizedStop * (1 - deviationRatio), normalizedStop),
-        tickSize,
-        pricePrecision
-      )
-    : normalizePrice(normalizedStop * (1 + deviationRatio), tickSize, pricePrecision);
-  const takeProfitExecutionPriceString = formatDecimal(
-    normalizedTpExecutionPrice,
-    pricePrecision
-  );
-  const stopExecutionPriceString = formatDecimal(
-    normalizedStopExecutionPrice,
-    pricePrecision
-  );
-
-  if (request.thesisBias === "long") {
-    if (normalizedTpExecutionPrice > normalizedTp || normalizedStopExecutionPrice > normalizedStop) {
-      throw new ExecutionServiceError(
-        "INVALID_CHILD_PRICE",
-        400,
-        false,
-        "The long attached TP/SL execution prices could not be normalized beneath their trigger prices."
-      );
-    }
-  } else if (
-    normalizedTpExecutionPrice < normalizedTp ||
-    normalizedStopExecutionPrice < normalizedStop
-  ) {
-    throw new ExecutionServiceError(
-      "INVALID_CHILD_PRICE",
-      400,
-      false,
-      "The short attached TP/SL execution prices could not be normalized above their trigger prices."
-    );
-  }
 
   const entryOrder = {
     clOrdID: makeClOrdId("entry"),
@@ -830,7 +811,6 @@ function buildExecutionPreview(
     side: exitSideCode,
     type: 2,
     timeInForce: 3,
-    price: takeProfitExecutionPriceString,
     quantity: quantityString,
     stopPrice: takeProfitString,
     stopType: 2,
@@ -845,7 +825,6 @@ function buildExecutionPreview(
     side: exitSideCode,
     type: 2,
     timeInForce: 3,
-    price: stopExecutionPriceString,
     quantity: quantityString,
     stopPrice: stopPriceString,
     stopType: 1,
@@ -868,6 +847,10 @@ function buildExecutionPreview(
       accountId: credentials.accountId,
       apiWalletAddress: credentials.apiWalletAddress
     },
+    market: {
+      markPrice: round(marketContext.markPrice, 2),
+      indexPrice: round(marketContext.indexPrice, 2)
+    },
     adjustments,
     warnings,
     orders: [
@@ -880,14 +863,12 @@ function buildExecutionPreview(
       buildOrderPreview("take_profit", exitSideCode, 2, 3, {
         clOrdID: takeProfitOrder.clOrdID,
         quantity: quantityString,
-        price: takeProfitExecutionPriceString,
         stopPrice: takeProfitString,
         reduceOnly: true
       }),
       buildOrderPreview("stop_loss", exitSideCode, 2, 3, {
         clOrdID: stopLossOrder.clOrdID,
         quantity: quantityString,
-        price: stopExecutionPriceString,
         stopPrice: stopPriceString,
         reduceOnly: true
       })
@@ -997,7 +978,10 @@ async function submitPerpsBracketOrder(input: {
       400,
       false,
       "SoDEX rejected one or more orders in the execution packet.",
-      rejectedItems.map((item) => `${item.clOrdID}: ${item.error ?? `code ${item.code}`}`)
+      [
+        ...describeOrderPacket(input.preview, input.request),
+        ...rejectedItems.map((item) => `${item.clOrdID}: ${item.error ?? `code ${item.code}`}`)
+      ]
     );
   }
 
@@ -1006,6 +990,7 @@ async function submitPerpsBracketOrder(input: {
     environment: "testnet",
     symbol: input.preview.symbol,
     account: input.preview.account,
+    market: input.preview.market,
     adjustments: input.preview.adjustments,
     warnings: input.preview.warnings,
     orders: input.preview.orders,

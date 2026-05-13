@@ -165,6 +165,10 @@ export interface ExecutionPreviewResponse {
     accountId: number;
     apiWalletAddress: string;
   };
+  market: {
+    markPrice: number;
+    indexPrice: number;
+  };
   adjustments: string[];
   warnings: string[];
   orders: ExecutionPreviewOrder[];
