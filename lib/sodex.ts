@@ -580,10 +580,20 @@ async function signPerpsPayload(payload: {
     payloadHash,
     nonce
   });
+  const parsedSignature = ethers.Signature.from(signature);
+  const rawRecoverableSignature = ethers.hexlify(
+    ethers.concat([
+      parsedSignature.r,
+      parsedSignature.s,
+      ethers.toBeHex(parsedSignature.yParity, 1)
+    ])
+  );
 
   return {
     nonce: String(nonce),
-    signature: `0x01${signature.slice(2)}`
+    // SoDEX expects the typed-signature prefix byte plus raw r||s||v bytes,
+    // where v is the recovery id in 0/1 form.
+    signature: `0x01${rawRecoverableSignature.slice(2)}`
   };
 }
 
